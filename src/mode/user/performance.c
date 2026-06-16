@@ -5,14 +5,19 @@
 #include <utils/conversion.h>
 #include <flash/settings.h>
 
+#if !defined(LPMINI)
 uint8_t velocity_curve_high(uint8_t v);
 uint8_t velocity_curve_low(uint8_t v);
+#endif
 
 void performance_init() { }
 
 void performance_timer_event() { }
 
 void performance_surface_event(uint8_t type, uint8_t index, uint8_t value) {
+    #if defined(LPMINI)
+    driver_send_midi(1, (uint8_t[]){(uint8_t)(0x90), xy_dr[index], type ? 127 : 0}, 3);
+    #else
     uint8_t vel = 0;
     if (settings_velocity_curve == 0) {
         vel = velocity_curve_low(value);
@@ -23,6 +28,7 @@ void performance_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     }
 
     driver_send_midi(1, (uint8_t[]){(uint8_t)(0x90), xy_dr[index], type ? (settings_velocity_enabled ? vel : 127) : 0}, 3);
+    #endif
 }
 
 void performance_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) {
@@ -56,13 +62,18 @@ void performance_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2
 }
 
 void performance_aftertouch_event(uint8_t index, uint8_t value) {
+    #if defined(LPMINI)
+    (void)index; (void)value;
+    #else
     if (settings_aftertouch_mode == 1) {
         driver_send_midi(1, (uint8_t[]){(uint8_t)(160), xy_dr[index], value}, 3);
     } else if (settings_aftertouch_mode == 2) {
         driver_send_midi(1, (uint8_t[]){(uint8_t)(208), xy_dr[index], value}, 3);
     }
+    #endif
 }
 
+#if !defined(LPMINI)
 uint8_t velocity_curve_low(uint8_t v)
 {
     if (v == 0) return 0;
@@ -98,3 +109,4 @@ uint8_t velocity_curve_high(uint8_t v)
     if (res > 127) res = 127;
     return (uint8_t)res;
 }
+#endif

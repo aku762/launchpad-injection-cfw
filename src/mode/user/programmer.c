@@ -10,7 +10,11 @@ void programmer_init() { }
 void programmer_timer_event() { }
 
 void programmer_surface_event(uint8_t type, uint8_t index, uint8_t value) {
+    #if defined(LPMINI)
+    driver_send_midi(1, (uint8_t[]){(uint8_t)(0x90), index, type ? 127 : 0}, 3);
+    #else
     driver_send_midi(1, (uint8_t[]){(uint8_t)(0x90), index, type ? (settings_velocity_enabled ? value : 127) : 0}, 3);
+    #endif
 }
 
 void programmer_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) {
@@ -32,9 +36,13 @@ void programmer_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2)
 }
 
 void programmer_aftertouch_event(uint8_t index, uint8_t value) {
+    #if defined(LPMINI)
+    (void)index; (void)value;
+    #else
     if (settings_aftertouch_mode == 1) {
         driver_send_midi(1, (uint8_t[]){(uint8_t)(160), index, value}, 3);
     } else if (settings_aftertouch_mode == 2) {
         driver_send_midi(1, (uint8_t[]){(uint8_t)(208), index, value}, 3);
     }
+    #endif
 }

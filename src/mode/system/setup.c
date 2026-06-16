@@ -27,9 +27,9 @@ static const uint32_t headline_leds[4][28][2] = {
 #define MODES 3
 
 static const uint8_t selectable_modes[MODES][2] = {
-    { 11, MODE_PERFORMANCE },
-    { 12, MODE_PROGRAMMER },
-    { 13, MODE_ONE_FADER },
+    { 11, MODE_SHOWCASE },
+    { 12, MODE_MEGA_FADERS },
+    { 13, MODE_PERFORMANCE },
 };
 
 #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
@@ -113,7 +113,9 @@ void setup_init() {
         }
 
         set_led(31 + brightness, 0xccccff);
-    } else if (page == 2) {
+    }
+    #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
+    else if (page == 2) {
         uint8_t vel_curve = driver_get_velocity_curve();
         uint8_t vel_enabled = driver_get_velocity_enabled();
 
@@ -142,6 +144,7 @@ void setup_init() {
             set_led(21 + at_curve, 0x4000ff);
         }
     }
+    #endif
 }
 
 void setup_timer_event() {
@@ -157,7 +160,7 @@ void setup_timer_event() {
 void setup_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     if (type != 1) return;
 
-    if (index == 95 || (index == 0 && value != 0)) {
+    if (index == 19 || (index == 0 && value != 0)) {
         mode_switch(mode);
         flash_write();
         return;
@@ -199,7 +202,9 @@ void setup_surface_event(uint8_t type, uint8_t index, uint8_t value) {
 
             setup_init();
         }
-    } else if (page == 2) { // <- Velocity Page
+    }
+    #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
+    else if (page == 2) { // <- Velocity Page
         if (index == 31) {
             uint8_t enabled = driver_get_velocity_enabled();
             driver_set_velocity_enabled(!enabled);
@@ -231,6 +236,7 @@ void setup_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             setup_init();
         }
     }
+    #endif
 }
 
 void setup_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) { }

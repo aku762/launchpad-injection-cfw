@@ -31,7 +31,11 @@ def midi_ch(channel):
     return max(0, int(channel) - 1)
 
 def send(status, d1, d2):
-    return f'driver_send_midi(1, (uint8_t[]){{{status:#04X}, {d1}, {d2}}}, 3);'
+    # Routed through the shared send_midi3() helper (see generate()) instead
+    # of inlining a (uint8_t[]){...} compound literal at every call site —
+    # with 80+ widgets in a layout, the duplicated array-setup code is what
+    # blows the flash budget.
+    return f'send_midi3({status:#04X}, {d1}, {d2});'
 
 def fader_value_at(pos, throw_count, min_val, max_val):
     """Precompute the exact CC value for throw position pos (0-indexed)."""
@@ -212,17 +216,13 @@ def gen_fader_struct():
 
 
 def gen_update_fader_leds():
+    # fill is the exact throw position (0-indexed), passed directly by the
+    # caller — never re-derived from the MIDI value, since that round-trip
+    # through fader_value_at()'s integer division loses precision and lights
+    # the segment one behind the one actually pressed.
     return [
-        'static void update_fader_leds(uint8_t fi, uint8_t cur) {',
+        'static void update_fader_leds(uint8_t fi, uint8_t fill) {',
         '    const FaderCfg *f = &FADERS[fi];',
-        '    uint8_t fill = 0;',
-        '    uint8_t range = f->max_value - f->min_value;',
-        '    if (range > 0 && f->length > 1) {',
-        '        fill = (uint8_t)((uint16_t)(cur - f->min_value)',
-        '                         * (f->length - 1) / range);',
-        '    } else if (cur >= f->max_value) {',
-        '        fill = f->length > 0 ? f->length - 1 : 0;',
-        '    }',
         '    for (uint8_t i = 0; i < f->length; i++) {',
         '        uint8_t pad = (uint8_t)((int)f->anchor_xy + i * f->pad_step);',
         '        set_led(pad, (i <= fill) ? f->color_on : f->color_off);',
@@ -252,6 +252,12 @@ def generate(layout, name):
     c.append(f'#include <driver/driver.h>')
     c.append('')
 
+    c.append('static void send_midi3(uint8_t status, uint8_t d1, uint8_t d2) {')
+    c.append('    uint8_t buf[3] = { status, d1, d2 };')
+    c.append('    driver_send_midi(1, buf, 3);')
+    c.append('}')
+    c.append('')
+
     if has_toggle:
         c.append('static uint8_t toggle[100];')
         c.append('')
@@ -279,24 +285,42 @@ def generate(layout, name):
         c.append('')
         # mutable runtime state — explicitly set in init(), no .data init needed
         c.append(f'static uint8_t fader_current[N_FADERS];')
+        # last throw position per fader, so re-entering the mode can redraw
+        # LEDs from where the fader actually is instead of recomputing it
+        c.append(f'static uint8_t fader_fill[N_FADERS];')
         c.append('')
         c += gen_update_fader_leds()
         c.append('')
 
     # ── init ────────────────────────────────────────────────────────────────
+    # Re-entering a mode (switching away and back) must not reset toggle/fader
+    # state — only the very first activation should apply defaults. A static
+    # guard (zero by default, like every other uninitialized global here)
+    # tracks that per mode. Every call still redraws LEDs from current state.
     c.append(f'void {name}_init() {{')
-    if has_toggle:
-        c.append('    for (int i = 0; i < 100; i++) toggle[i] = 0;')
-    for xy_str, b in sorted_non_fader:
-        c.append(f'    set_led({int(xy_str)}, {hex_c(b.get("color_off", "#000000"))});')
-    if has_faders:
-        c.append('    for (uint8_t i = 0; i < N_FADERS; i++) {')
-        c.append('        fader_current[i] = FADERS[i].min_value;')
-        c.append('        update_fader_leds(i, fader_current[i]);')
-        c.append('        driver_send_midi(1,')
-        c.append('            (uint8_t[]){(uint8_t)(0xB0 | FADERS[i].channel),')
-        c.append('                        FADERS[i].cc, FADERS[i].min_value}, 3);')
+    if has_toggle or has_faders:
+        c.append('    static uint8_t mode_initialized;')
+        c.append('    if (!mode_initialized) {')
+        if has_toggle:
+            c.append('        for (int i = 0; i < 100; i++) toggle[i] = 0;')
+        if has_faders:
+            c.append('        for (uint8_t i = 0; i < N_FADERS; i++) {')
+            c.append('            fader_current[i] = FADERS[i].min_value;')
+            c.append('            fader_fill[i] = 0;')
+            c.append('            send_midi3((uint8_t)(0xB0 | FADERS[i].channel), FADERS[i].cc, FADERS[i].min_value);')
+            c.append('        }')
+        c.append('        mode_initialized = 1;')
         c.append('    }')
+    for xy_str, b in sorted_non_fader:
+        xy = int(xy_str)
+        if b.get('behavior') == 'toggle':
+            color_on  = hex_c(b.get('color_on',  '#ffffff'))
+            color_off = hex_c(b.get('color_off', '#000000'))
+            c.append(f'    set_led({xy}, toggle[{xy}] ? {color_on} : {color_off});')
+        else:
+            c.append(f'    set_led({xy}, {hex_c(b.get("color_off", "#000000"))});')
+    if has_faders:
+        c.append('    for (uint8_t i = 0; i < N_FADERS; i++) update_fader_leds(i, fader_fill[i]);')
     c.append('}')
     c.append('')
 
@@ -329,7 +353,8 @@ def generate(layout, name):
             c.append(f'            if (type) {{')
             c += [
                 f'                fader_current[{fi}] = {val};',
-                f'                update_fader_leds({fi}, {val});',
+                f'                fader_fill[{fi}] = {throw_pos};',
+                f'                update_fader_leds({fi}, {throw_pos});',
                 f'                {send(s, cc, val)}',
             ]
             c.append(f'            }}')

@@ -1,6 +1,6 @@
 CC=arm-none-eabi-gcc
 CFLAGS=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=softfp -Os \
-	-ffunction-sections -fdata-sections -fno-builtin
+	-ffunction-sections -fdata-sections -fno-builtin -MMD -MP
 
 DEVICE ?= lpx
 
@@ -94,7 +94,7 @@ else ifeq ($(DEVICE),lpp)
 	CFLAGS=-O2 -Wall -Iinclude \
 		-D_STM32F103RBT6_ -D_STM3x_ -D_STM32x_ -mthumb -mcpu=cortex-m3 -fcommon -fsigned-char \
 		-DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER -DHSE_VALUE=6000000UL -DCMSIS -DUSE_GLOBAL_CONFIG \
-		-ffunction-sections -fdata-sections -std=c99 -mlittle-endian -DPRO -DLPPRO
+		-ffunction-sections -fdata-sections -std=c99 -mlittle-endian -DPRO -DLPPRO -MMD -MP
 	LDFLAGS=-T linker/stm32_lpp.ld -u _start -u _Minimum_Stack_Size -mcpu=cortex-m3 -mthumb \
 		-specs=nano.specs -specs=nosys.specs -nostdlib -Wl,-static -N -nostartfiles -Wl,--gc-sections
 	DRIVER_SRC=src/driver/lpp/lpp_app.c \
@@ -123,7 +123,8 @@ SRC=$(DRIVER_SRC) \
 	src/mode/system/setup.c \
 	src/mode/user/performance.c \
 	src/mode/user/programmer.c \
-	src/mode/user/one_fader.c \
+	src/mode/user/mega_faders.c \
+	src/mode/user/showcase.c \
 
 INCLUDES=-Iinclude
 
@@ -131,6 +132,8 @@ BUILD_DIR=build/$(DEVICE)
 SCRIPTS_DIR=tools
 
 OBJS=$(patsubst %.c,$(BUILD_DIR)/%.o,$(SRC)) $(BLOB_OBJ) $(LIB_OBJ)
+DEPS=$(patsubst %.c,$(BUILD_DIR)/%.d,$(SRC))
+-include $(DEPS)
 
 libs/%.o:
 	@# Prebuilt object retained: $@

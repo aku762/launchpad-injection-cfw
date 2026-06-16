@@ -3,10 +3,11 @@
 #include "mode/mode.h"
 #include "flash/flash.h"
 #include "utils/sysex.h"
+#include "driver/driver.h"
 
 #if defined(LPX) || defined(LPMINI)
-uint8_t session_button_down = 0;
-uint16_t session_button_tick = 0;
+uint8_t setup_button_down = 0;
+uint16_t setup_button_tick = 0;
 #endif
 
 #if defined(LPPRO)
@@ -15,8 +16,8 @@ void alt_app_init() {
 void app_init() {
 #endif
     #if defined(LPX) || defined(LPMINI)
-    session_button_down = 0;
-    session_button_tick = 0;
+    setup_button_down = 0;
+    setup_button_tick = 0;
     #endif
 
     flash_read();
@@ -31,14 +32,14 @@ void app_timer_event() {
 #endif
     #if defined(LPX) || defined(LPMINI)
     if (current_mode != MODE_SETUP) {
-        if (session_button_tick >= 750) {
-            modes[current_mode].surface_event(0, 95, 0);
-            session_button_down = 0;
-            session_button_tick = 0;
+        if (setup_button_tick >= 750) {
+            modes[current_mode].surface_event(0, 19, 0);
+            setup_button_down = 0;
+            setup_button_tick = 0;
 
             mode_switch(MODE_SETUP);
-        } else if (session_button_down) {
-            session_button_tick++;
+        } else if (setup_button_down) {
+            setup_button_tick++;
         }
     }
     #endif
@@ -51,13 +52,13 @@ void alt_app_surface_event(uint8_t type, uint8_t index, uint8_t value) {
 #else
 void app_surface_event(uint8_t type, uint8_t index, uint8_t value) {
 #endif
-    #if defined(LPX) || defined(LPMINI) 
+    #if defined(LPX) || defined(LPMINI)
     if (current_mode != MODE_SETUP && current_mode != MODE_BOOT) {
-        if (type && index == 95) {
-            session_button_down = 1;
-        } else if (type == 0 && index == 95) {
-            session_button_down = 0;
-            session_button_tick = 0;
+        if (type && index == 19) {
+            setup_button_down = 1;
+        } else if (type == 0 && index == 19) {
+            setup_button_down = 0;
+            setup_button_tick = 0;
         }
     }
     #endif

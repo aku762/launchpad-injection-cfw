@@ -6,24 +6,24 @@ uint8_t mode = 0;
 
 const struct Mode modes[MODES_COUNT] = {
     {
-        .name = "Boot",
-        .color = 0x000000,
-        .color_dimmed = 0x000000,
-        .init = boot_init,
-        .timer_event = boot_timer_event,
-        .surface_event = boot_surface_event,
-        .midi_event = boot_midi_event,
-        .aftertouch_event = boot_aftertouch_event
+        .name = "Showcase",
+        .color = 0x22eeff,
+        .color_dimmed = 0x0a2233,
+        .init = showcase_init,
+        .timer_event = showcase_timer_event,
+        .surface_event = showcase_surface_event,
+        .midi_event = showcase_midi_event,
+        .aftertouch_event = showcase_aftertouch_event
     },
     {
-        .name = "Setup",
-        .color = 0x000000,
-        .color_dimmed = 0x000000,
-        .init = setup_init,
-        .timer_event = setup_timer_event,
-        .surface_event = setup_surface_event,
-        .midi_event = setup_midi_event,
-        .aftertouch_event = setup_aftertouch_event
+        .name = "Mega Faders",
+        .color = 0x00ff88,
+        .color_dimmed = 0x003322,
+        .init = mega_faders_init,
+        .timer_event = mega_faders_timer_event,
+        .surface_event = mega_faders_surface_event,
+        .midi_event = mega_faders_midi_event,
+        .aftertouch_event = mega_faders_aftertouch_event
     },
     {
         .name = "Performance",
@@ -46,14 +46,24 @@ const struct Mode modes[MODES_COUNT] = {
         .aftertouch_event = programmer_aftertouch_event
     },
     {
-        .name = "One Fader",
-        .color = 0xff0100,
-        .color_dimmed = 0x330000,
-        .init = one_fader_init,
-        .timer_event = one_fader_timer_event,
-        .surface_event = one_fader_surface_event,
-        .midi_event = one_fader_midi_event,
-        .aftertouch_event = one_fader_aftertouch_event
+        .name = "Boot",
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
+        .init = boot_init,
+        .timer_event = boot_timer_event,
+        .surface_event = boot_surface_event,
+        .midi_event = boot_midi_event,
+        .aftertouch_event = boot_aftertouch_event
+    },
+    {
+        .name = "Setup",
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
+        .init = setup_init,
+        .timer_event = setup_timer_event,
+        .surface_event = setup_surface_event,
+        .midi_event = setup_midi_event,
+        .aftertouch_event = setup_aftertouch_event
     }
 };
 

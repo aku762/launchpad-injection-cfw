@@ -67,34 +67,47 @@ const WIDGET_DEFS = {
   },
 };
 
-// Novation's color palette from their Components UI
+// Palette: true RGB maxes first, then Novation's curated primaries/pastels
 const PALETTE = [
+  // ── True RGB (maxed channels, for distinguishing adjacent widgets) ──
+  { name: 'True Red',        hex: '#ff0000' },
+  { name: 'True Orange',     hex: '#ff8000' },
+  { name: 'True Yellow',     hex: '#ffff00' },
+  { name: 'True Green',      hex: '#00ff00' },
+  { name: 'True Cyan',       hex: '#00ffff' },
+  { name: 'True Blue',       hex: '#0000ff' },
+  { name: 'True Purple',     hex: '#8000ff' },
+  { name: 'True Magenta',    hex: '#ff00ff' },
+  { name: 'True White',      hex: '#ffffff' },
+  { name: 'True Black',      hex: '#000000' },
+  // ── Primaries ──────────────────────────────────────────────────
   { name: 'Red',             hex: '#ff0100' },
-  { name: 'Peach',           hex: '#ff918c' },
   { name: 'Orange',          hex: '#eb7b0c' },
-  { name: 'Sand',            hex: '#fed49c' },
-  { name: 'Pale orange',     hex: '#e8ce5d' },
-  { name: 'Orange white',    hex: '#eaefaf' },
-  { name: 'Pastel yellow',   hex: '#ffe05c' },
   { name: 'Yellow',          hex: '#f3f306' },
-  { name: 'Sick green',      hex: '#cdff03' },
   { name: 'Lime',            hex: '#aaf11d' },
-  { name: 'Teal',            hex: '#04ff89' },
   { name: 'Green',           hex: '#1fce26' },
-  { name: 'Dentist green',   hex: '#c1f9cd' },
-  { name: 'Green blue',      hex: '#03ffa3' },
-  { name: 'Pastel teal',     hex: '#91ffe8' },
+  { name: 'Teal',            hex: '#04ff89' },
   { name: 'Cyan',            hex: '#18d9d9' },
   { name: 'Blue',            hex: '#21a7d5' },
   { name: 'Deep blue',       hex: '#4b4eff' },
-  { name: 'Pastel purple',   hex: '#a379ff' },
   { name: 'Purple',          hex: '#9c30ed' },
-  { name: 'Pale purple',     hex: '#cdb4ff' },
   { name: 'Pink',            hex: '#e039e0' },
-  { name: 'Pastel pink',     hex: '#ff79ff' },
-  { name: 'Outrageous pink', hex: '#ff00a3' },
+  { name: 'Hot pink',        hex: '#ff00a3' },
   { name: 'Rose',            hex: '#ff4485' },
   { name: 'White',           hex: '#ffffff' },
+  // ── Pastels / lights ───────────────────────────────────────────
+  { name: 'Peach',           hex: '#ff918c' },
+  { name: 'Sand',            hex: '#fed49c' },
+  { name: 'Pastel yellow',   hex: '#ffe05c' },
+  { name: 'Sick green',      hex: '#cdff03' },
+  { name: 'Dentist green',   hex: '#c1f9cd' },
+  { name: 'Pastel teal',     hex: '#91ffe8' },
+  { name: 'Green blue',      hex: '#03ffa3' },
+  { name: 'Pale orange',     hex: '#e8ce5d' },
+  { name: 'Pastel purple',   hex: '#a379ff' },
+  { name: 'Pale purple',     hex: '#cdb4ff' },
+  { name: 'Pastel pink',     hex: '#ff79ff' },
+  { name: 'Orange white',    hex: '#eaefaf' },
   { name: 'Dim white',       hex: '#797979' },
   { name: 'Black',           hex: '#4f4f4f' },
 ];
@@ -118,11 +131,66 @@ function getFaderPads(xy, cfg) {
   return Array.from({ length: len }, (_, i) => xy + i * step);
 }
 
+function hexToRgb(hex) {
+  return [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+}
+
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case r: h = ((g - b) / d) % 6; break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60)       { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else              { r = c; g = 0; b = x; }
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+
+// Pushes lightness toward white (deltaL > 0) or black (deltaL < 0) while
+// preserving hue/saturation — plain RGB multiplication can't lighten a
+// channel that's already 0 or 255, which is why pure red wouldn't lighten.
+function adjustLightness(hex, deltaL) {
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const newL = Math.max(0, Math.min(1, l + deltaL));
+  const [nr, ng, nb] = hslToRgb(h, s, newL);
+  return rgbToHex(nr, ng, nb);
+}
+
+// Used by fader preview rendering to dim a color for unfilled segments.
 function dimHex(hex, factor) {
-  const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
-  const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor);
-  const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor);
-  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHex(r * factor, g * factor, b * factor);
 }
 
 function clearFaderSatellites(anchorXy) {
@@ -594,16 +662,51 @@ function colorPickerCol(labelText, currentHex, onChange) {
   lbl.textContent = labelText;
   col.appendChild(lbl);
 
+  // Native color picker (free pick override)
   const colorInput = document.createElement('input');
   colorInput.type = 'color';
   colorInput.className = 'color-input';
   colorInput.value = currentHex;
   colorInput.addEventListener('input', () => {
     col.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    currentHex = colorInput.value;
     onChange(colorInput.value);
   });
   col.appendChild(colorInput);
 
+  // Brightness controls: − / +
+  const brightRow = document.createElement('div');
+  brightRow.className = 'brightness-row';
+
+  const darkenBtn = document.createElement('button');
+  darkenBtn.className = 'brightness-btn';
+  darkenBtn.textContent = '−';
+  darkenBtn.title = 'Darken';
+  darkenBtn.addEventListener('click', () => {
+    const next = adjustLightness(colorInput.value, -0.12);
+    col.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    colorInput.value = next;
+    currentHex = next;
+    onChange(next);
+  });
+
+  const brightenBtn = document.createElement('button');
+  brightenBtn.className = 'brightness-btn';
+  brightenBtn.textContent = '+';
+  brightenBtn.title = 'Brighten';
+  brightenBtn.addEventListener('click', () => {
+    const next = adjustLightness(colorInput.value, 0.12);
+    col.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    colorInput.value = next;
+    currentHex = next;
+    onChange(next);
+  });
+
+  brightRow.appendChild(darkenBtn);
+  brightRow.appendChild(brightenBtn);
+  col.appendChild(brightRow);
+
+  // Palette swatch grid
   const grid = document.createElement('div');
   grid.className = 'color-picker-grid';
 
@@ -616,6 +719,7 @@ function colorPickerCol(labelText, currentHex, onChange) {
       col.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
       sw.classList.add('selected');
       colorInput.value = hex;
+      currentHex = hex;
       onChange(hex);
     });
     grid.appendChild(sw);

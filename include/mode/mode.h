@@ -6,13 +6,19 @@
 extern uint8_t current_mode;
 extern uint8_t mode;
 
-#define MODES_COUNT 5
+#define MODES_COUNT 6
 
-#define MODE_BOOT 0
-#include "mode/system/boot.h"
+// Slots 0-3 are targetable by in-mode "mode_switch" buttons (see
+// editor widgets of type mode_switch / tools/json_to_mode.py). Every
+// value a mode_switch button can send MUST have a real entry here —
+// mode_switch() has no bounds check, so an out-of-range target reads
+// garbage out of modes[] and crashes/bricks the device.
 
-#define MODE_SETUP 1
-#include "mode/system/setup.h"
+#define MODE_SHOWCASE 0
+#include "mode/user/showcase.h"
+
+#define MODE_MEGA_FADERS 1
+#include "mode/user/mega_faders.h"
 
 #define MODE_PERFORMANCE 2
 #include "mode/user/performance.h"
@@ -20,8 +26,11 @@ extern uint8_t mode;
 #define MODE_PROGRAMMER 3
 #include "mode/user/programmer.h"
 
-#define MODE_ONE_FADER 4
-#include "mode/user/one_fader.h"
+#define MODE_BOOT 4
+#include "mode/system/boot.h"
+
+#define MODE_SETUP 5
+#include "mode/system/setup.h"
 
 struct Mode {
     char * name;
