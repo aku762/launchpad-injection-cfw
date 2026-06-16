@@ -1,6 +1,6 @@
-# Launchpad Injection CFW — Mini Mk3 Edition
+# Splicewerk
 
-A front-end on top of [anthonyhfm/launchpad-injection-cfw](https://github.com/anthonyhfm/launchpad-injection-cfw)'s binary injection system, focused entirely on the **Launchpad Mini Mk3** and built out with a visual layout editor, a JSON-to-C mode generator, and a set of Mini-specific size optimizations.
+A visual layout editor, JSON-to-C mode generator, and a set of size optimizations built on top of [anthonyhfm/launchpad-injection-cfw](https://github.com/anthonyhfm/launchpad-injection-cfw)'s binary injection system. Currently supports the **Launchpad Mini Mk3** only — that's a scoping choice, not a design limit; the underlying injection technique works across the rest of the Launchpad family too (see Device Support below), it's just that Mini Mk3 is the only hardware on hand to actually test against.
 
 The injection technique itself — extracting the stock firmware, splicing in custom code, hooking call sites to redirect execution — is upstream's reverse-engineering work, not ours. What this repo adds is everything on top of that foundation for one specific device: a browser editor non-programmers can use to lay out a controller surface, a generator that turns that layout into compiled C, a set of generated modes (Mix 1, Mix 2, Mega Faders, Mix Test) built with that editor/generator pair, and a string of cuts to claw back flash on a chip that only has ~15KB of injectable space to begin with.
 
@@ -81,7 +81,7 @@ Export the registry (Export modes.json) over `editor/modes.json`, then sync it i
 python3 tools/sync_modes.py editor/modes.json
 ```
 
-This rewrites only the fenced `// BEGIN/END GENERATED MODES` regions inside `include/mode/mode.h` and `src/mode/mode.c` — the `#define MODE_*`/`#include` block in the header and the corresponding `modes[]` struct entries in the source. Boot and Setup are system-only modes (not built in the editor) and are always appended automatically right after your registered modes, at the next two free slots. Everything else in both files — `struct Mode`, `mode_switch()`, `mode_refresh()` — is untouched. The Makefile's `SRC` list is **not** touched by this script; adding a new mode's `.c` file there is still a manual one-line edit (see "Adding a new mode" below).
+This rewrites only the fenced `// BEGIN/END GENERATED MODES` regions inside `include/mode/mode.h` and `src/mode/mode.c` — the `#define MODE_*`/`#include` block in the header and the corresponding `modes[]` struct entries in the source — plus the Makefile's `USER_MODE_SRC` variable (its own `# BEGIN/END GENERATED MODE SRC` fence), so the right `.c` files actually get compiled. Boot and Setup are system-only modes (not built in the editor) and are always appended automatically right after your registered modes, at the next two free slots. Everything else — `struct Mode`, `mode_switch()`, `mode_refresh()`, the rest of the Makefile — is untouched. A mode removed from `modes.json` simply stops being compiled; its `.c`/`.h` pair stays on disk untouched until it's added back.
 
 Once the registry is synced, the editor's `mode_switch` widget dropdown and on-pad labels automatically show real mode names/slots instead of bare numbers — and since `mode_switch()` clamps any out-of-range target to `MODE_DEFAULT` (slot 0, see RAM/flash safety notes), a layout that targets a slot you haven't registered yet degrades safely instead of bricking the device.
 
@@ -145,10 +145,9 @@ make mini
 ## Adding a new mode
 
 1. Open `editor/index.html`, click **Modes…**, and add a row for the new mode — pick a free slot, a display name, and an `id` (this is the name you'll pass to the generator in step 3). Export modes.json over `editor/modes.json`.
-2. Sync the registry into the firmware: `python3 tools/sync_modes.py editor/modes.json` — this rewrites the generated regions of `include/mode/mode.h` and `src/mode/mode.c` for you.
+2. Sync the registry into the firmware: `python3 tools/sync_modes.py editor/modes.json` — this rewrites the generated regions of `include/mode/mode.h`, `src/mode/mode.c`, and the Makefile's `USER_MODE_SRC` for you, so `your_id.c` is now part of the build.
 3. Design the layout in the editor and export it as `.json` into `editor/`. Run the generator: `python3 tools/json_to_mode.py editor/your_layout.json your_id` (use the same `id` from step 1). Any `mode_switch` widgets in the layout resolve automatically against the now-synced `mode.h`.
-4. Add `src/mode/user/your_id.c \` to `SRC` in the `Makefile` — this one step stays manual by design (lowest-risk thing to hand-edit, highest-risk thing to auto-edit wrong).
-5. `make mini`
+4. `make mini`
 
 ## Repository layout (Mini-relevant parts)
 

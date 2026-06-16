@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-json_to_mode.py  - Convert a Launchpad CFW Editor JSON layout to a C mode.
+json_to_mode.py  - Convert a Splicewerk Editor JSON layout to a C mode.
 
 Usage:
     python3 tools/json_to_mode.py <layout.json> [mode_name]

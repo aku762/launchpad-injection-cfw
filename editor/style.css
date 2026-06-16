@@ -258,6 +258,11 @@ body {
   letter-spacing: 0.05em;
 }
 
+.app-subtitle {
+  font-weight: 400;
+  opacity: 0.6;
+}
+
 .toolbar-actions { display: flex; gap: 8px; }
 
 .launchpad-wrap {
