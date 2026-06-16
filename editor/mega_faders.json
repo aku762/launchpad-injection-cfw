@@ -339,7 +339,7 @@
   },
   "98": {
     "type": "mode_switch",
-    "target_mode": 3,
+    "target_mode": 0,
     "color_on": "#cc44ff",
     "color_off": "#220033"
   }

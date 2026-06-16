@@ -1,0 +1,7 @@
+{
+  "modes": [
+    { "slot": 0, "name": "Mixer", "id": "mixer" },
+    { "slot": 1, "name": "Mega Faders", "id": "mega_faders" },
+    { "slot": 2, "name": "Mix Test", "id": "mix_test" }
+  ]
+}

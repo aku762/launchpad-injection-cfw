@@ -19,6 +19,25 @@ import sys
 
 NOTE_NAMES     = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
 DIRECTION_STEP = {'up': 10, 'down': -10, 'right': 1, 'left': -1}
+MODE_H_PATH    = os.path.join('include', 'mode', 'mode.h')
+
+
+def load_mode_registry(path=MODE_H_PATH):
+    """Map slot number -> MODE_* macro name, read straight out of mode.h.
+
+    This is the single source of truth for slot assignment, so generated
+    mode_switch() targets can reference modes by name instead of by a raw
+    number that has to be hand-checked against mode.h after every build.
+    """
+    registry = {}
+    if not os.path.isfile(path):
+        return registry
+    with open(path) as f:
+        for line in f:
+            m = re.match(r'\s*#define\s+(MODE_\w+)\s+(\d+)', line)
+            if m:
+                registry[int(m.group(2))] = m.group(1)
+    return registry
 
 def note_label(n):
     return NOTE_NAMES[n % 12] + str(n // 12 - 2)
@@ -48,7 +67,7 @@ def fader_value_at(pos, throw_count, min_val, max_val):
 
 # ── Non-fader surface cases ──────────────────────────────────────────────────
 
-def gen_surface_case(xy, b):
+def gen_surface_case(xy, b, mode_registry, unresolved_targets):
     btype    = b['type']
     ch       = midi_ch(b.get('channel', 1))
     color_on  = hex_c(b.get('color_on',  '#ffffff'))
@@ -147,8 +166,16 @@ def gen_surface_case(xy, b):
 
     elif btype == 'mode_switch':
         target = int(b.get('target_mode', 0))
+        target_str = mode_registry.get(target)
+        if target_str is None:
+            # Not in mode.h yet (e.g. this mode isn't registered, or the
+            # layout targets a slot that doesn't exist) - emit the raw
+            # number so it's still obviously a manual TODO, not silently
+            # wrong.
+            target_str = str(target)
+            unresolved_targets.append((xy, target))
         lines += [
-            f'            if (type) mode_switch({target});',
+            f'            if (type) mode_switch({target_str});',
         ]
 
     lines.append('            break;')
@@ -242,6 +269,9 @@ def gen_update_fader_leds():
 # ── Main generator ────────────────────────────────────────────────────────────
 
 def generate(layout, name):
+    mode_registry = load_mode_registry()
+    unresolved_targets = []
+
     faders, fader_xys = extract_faders(layout)
     has_faders = len(faders) > 0
 
@@ -351,7 +381,7 @@ def generate(layout, name):
     c.append('    switch (index) {')
 
     for xy_str, b in sorted_non_fader:
-        for line in gen_surface_case(int(xy_str), b):
+        for line in gen_surface_case(int(xy_str), b, mode_registry, unresolved_targets):
             c.append(line)
 
     if has_faders:
@@ -422,7 +452,7 @@ def generate(layout, name):
     ]
     h_src = '\n'.join(h)
 
-    return c_src, h_src
+    return c_src, h_src, unresolved_targets
 
 
 def sanitize_name(s):
@@ -444,7 +474,7 @@ def main():
     with open(json_path) as f:
         layout = json.load(f)
 
-    c_src, h_src = generate(layout, name)
+    c_src, h_src, unresolved_targets = generate(layout, name)
 
     c_out = os.path.join('src',     'mode', 'user', f'{name}.c')
     h_out = os.path.join('include', 'mode', 'user', f'{name}.h')
@@ -456,6 +486,16 @@ def main():
     print(f'  {c_out}')
     print(f'  {h_out}')
     print()
+
+    if unresolved_targets:
+        print('--- WARNING: unresolved mode_switch targets ----------------------')
+        print()
+        print("These target slot numbers aren't in include/mode/mode.h yet -")
+        print('emitted as raw numbers and need hand-patching once the target')
+        print('mode is registered (mode_switch() has no bounds check):')
+        for xy, target in unresolved_targets:
+            print(f'  pad {xy}: mode_switch({target})')
+        print()
     print('--- Register the mode -------------------------------------------')
     print()
     print('1. include/mode/mode.h  - add before the struct definition:')

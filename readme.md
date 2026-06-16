@@ -15,7 +15,7 @@ Custom code is compiled and **injected into the existing firmware image**. Selec
 
 The injected code can still call back into the original firmware functions, effectively using the stock firmware as a **driver layer** while replacing only the targeted behavior.
 
-This repo's Mini Mk3 build patches `app_tick_hook` and `midi_register_hook` (see `patches/lpmini.json`) and lands injected code in the gap between the end of the stock firmware blob and the end of the chip's physical flash — confirmed at 128KB total via the STM32F4 hardware `FLASHSIZE` register, leaving roughly 3.8KB of working room after the stock firmware and our own infrastructure.
+This repo's Mini Mk3 build patches `app_tick_hook` and `midi_register_hook` (see `patches/lpmini.json`) and lands injected code in the gap between the end of the stock firmware blob and the end of the chip's physical flash — confirmed at 128KB total via the STM32F4 hardware `FLASHSIZE` register, leaving roughly 6.2KB of working room after the stock firmware and our own infrastructure (up from ~3.8KB before the boot-animation removal, `#ifdef` stripping, and Setup-mode simplification described below — re-check `build/mini/fw.map` after any build if you need the exact current figure).
 
 ## What's here for Mini Mk3
 
@@ -55,7 +55,21 @@ Converts a layout `.json` into a ready-to-compile C firmware mode:
 python3 tools/json_to_mode.py editor/my_layout.json my_mode
 ```
 
-Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`, and prints the manual registration steps (below). Generated modes trade flash for flexibility — each button gets its own unrolled case, so a fully-mapped 80-button layout can run several KB. Hand-written modes (see Performance/Programmer, currently unreachable — below) use a generic handler plus a lookup table instead, at a fraction of the cost — reach for the generator for one-off/custom layouts, hand-write anything meant to be a permanent, space-efficient mode.
+Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`. If the layout has any `mode_switch` widgets, it resolves each one's target slot against the `MODE_*` macros currently registered in `include/mode/mode.h` (see Mode Registry below) and emits the symbolic macro name instead of a raw number — if a target slot isn't registered yet, it falls back to emitting the raw number and prints a warning so it's an obvious TODO rather than a silent miscompile. Generated modes trade flash for flexibility — each button gets its own unrolled case, so a fully-mapped 80-button layout can run several KB. Hand-written modes (see Performance/Programmer, currently unreachable — below) use a generic handler plus a lookup table instead, at a fraction of the cost — reach for the generator for one-off/custom layouts, hand-write anything meant to be a permanent, space-efficient mode.
+
+### Mode Registry (`editor/modes.json` + `tools/sync_modes.py`)
+
+Slot assignment — which mode lives in slot 0, 1, 2, etc. — is configured in one place: the editor's **Modes…** panel (toolbar button in `editor/index.html`). Add a row per mode with its display name and an `id` matching the name you pass to `json_to_mode.py`, and a slot number. This is deliberately a manual, user-controlled mapping, not something inferred from existing C or JSON state — the panel is the single source of truth.
+
+Export the registry (Export modes.json) over `editor/modes.json`, then sync it into the firmware:
+
+```bash
+python3 tools/sync_modes.py editor/modes.json
+```
+
+This rewrites only the fenced `// BEGIN/END GENERATED MODES` regions inside `include/mode/mode.h` and `src/mode/mode.c` — the `#define MODE_*`/`#include` block in the header and the corresponding `modes[]` struct entries in the source. Boot and Setup are system-only modes (not built in the editor) and are always appended automatically right after your registered modes, at the next two free slots. Everything else in both files — `struct Mode`, `mode_switch()`, `mode_refresh()` — is untouched. The Makefile's `SRC` list is **not** touched by this script; adding a new mode's `.c` file there is still a manual one-line edit (see "Adding a new mode" below).
+
+Once the registry is synced, the editor's `mode_switch` widget dropdown and on-pad labels automatically show real mode names/slots instead of bare numbers — and since `mode_switch()` clamps any out-of-range target to `MODE_MIXER` (see RAM/flash safety notes), a layout that targets a slot you haven't registered yet degrades safely instead of bricking the device.
 
 ### Modes currently shipping
 
@@ -64,18 +78,19 @@ Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`, and prints 
 | 0 | Mixer | generated (`editor/mixer.json`) | 8-channel CC mixer: one fader per channel plus 4 toggle pads |
 | 1 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout, momentary/toggle pads, `mode_switch` cluster |
 | 2 | Mix Test | generated (`editor/mix_test.json`) | scratch layout exercising every generator widget/behavior combo (toggle, trigger, fader, pc, mode_switch) |
-| — | Boot | hand-written | one-shot startup animation, not user-navigable |
-| — | Setup | hand-written | long-press **Stop-Solo-Mute (pad 19)** to enter; page 0 picks Mixer or Mega Faders, page 1 sets LED brightness |
+| — | Boot | hand-written, system-only | one-shot startup animation, not user-navigable |
+| — | Setup | hand-written, system-only | long-press **Stop-Solo-Mute (pad 19)** to enter; single page, sets LED brightness only |
 
-Performance and Programmer (the original hand-written, stock-CFW-derived modes) still live in `src/mode/user/` and still compile, but are no longer registered in `modes[]` — Mini has no hardware velocity/aftertouch support, so neither mapped well onto this device, and their slots were reclaimed for Mixer/Mix Test. Re-registering them is a `mode.h`/`mode.c` edit away if you want them back.
+Performance and Programmer (the original hand-written, stock-CFW-derived modes) still live in `src/mode/user/` and still compile, but are no longer registered in `modes[]` — Mini has no hardware velocity/aftertouch support, so neither mapped well onto this device, and their slots were reclaimed for Mixer/Mix Test. Re-registering them means adding them to the Modes panel and re-running `sync_modes.py`.
 
-Each mode's own `mode_switch` pads target whichever of the three registered modes makes sense for that layout — see the `case` blocks in `mixer.c`/`mega_faders.c`/`mix_test.c` for the exact pad numbers, since these get hand-patched after each regeneration (the generator always emits raw `mode_switch(<slot number>)`; those literals get replaced with the `MODE_*` macros from `mode.h` by hand — see "Adding a new mode" below).
+Each mode's own `mode_switch` pads target whichever of the three registered modes makes sense for that layout — see the `case` blocks in `mixer.c`/`mega_faders.c`/`mix_test.c` for the exact pad numbers, and `editor/mixer.json`/`mega_faders.json`/`mix_test.json` for how they're configured in the editor.
 
 ### Space-saving measures
 
 Mini's injectable gap is small (~15KB) and most of it is gone once the stock-firmware hook scaffolding and a couple of generated modes are in. Everything below was cut specifically to keep that budget workable:
 
 - **Removed the boot animation entirely** (`src/driver/mini/mini_boot.c`) — 2,613 lines of per-frame LED color tables, the single largest chunk of dead weight in this build. It also cost ~2.5s of boot time where the device looked alive but ignored all input, which made testing whatever mode it booted into more annoying than it needed to be. Mini now hands off straight into `MODE_MIXER` on boot.
+- **Simplified Setup down to a single brightness page** (`src/mode/system/setup.c`) — dropped the original mode-picker/palette page entirely now that mode switching is handled by `mode_switch` buttons placed directly in a layout via the editor, making a dedicated picker page redundant. Saved ~616 bytes of flash and a few bytes of RAM.
 - **Stripped velocity-curve and aftertouch handling** out of the shared Performance/Programmer code on Mini builds only (`#if defined(LPMINI)`), since the hardware has neither — saved ~600 bytes with zero functional change.
 - **Stripped non-Mini `#ifdef` branches** out of shared code that used to serve the whole device matrix — `sysex.c`, `conversion.c`, `palette.c`, `flash.c`, `led.c`, `app.c`/`app.h`, `driver.h`, `setup.c`, `performance.c`. None of those branches could ever execute on Mini; they were dead weight on every build.
 - **Unregistered Performance/Programmer/Showcase from `modes[]`** rather than deleting them outright — with `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections` already in the build flags, anything no longer referenced from `modes[]` is discarded by the linker entirely (confirmed via `build/mini/fw.map`'s discarded-input-sections list, where their `.text.*_init`/`*_surface_event`/etc. all show address `0x00000000`). Net effect is the same as deleting the code, but the source stays around if a future mode wants to reuse a piece of it.
@@ -109,20 +124,15 @@ To rebuild after editing a layout JSON:
 
 ```bash
 python3 tools/json_to_mode.py editor/mega_faders.json mega_faders
-# re-patch any mode_switch(N) literals to MODE_* macros (see Modes table above) before building
 make mini
 ```
 
 ## Adding a new mode
 
-1. Design the layout in `editor/index.html` and export it as `.json` into `editor/`.
-2. Run the generator: `python3 tools/json_to_mode.py editor/your_layout.json your_name`
-3. If the layout has a `mode_switch` widget, the generator emits `mode_switch(<raw slot number>)` — hand-patch each one to the matching `MODE_*` macro from `mode.h` (`mode_switch()` has no bounds check, so a stale/out-of-range literal reads garbage and can crash/brick the device). This has to be redone after every regeneration of that mode.
-4. Register it manually:
-   - Add `#define MODE_YOUR_NAME N` and `#include "mode/user/your_name.h"` to `include/mode/mode.h`
-   - Add an entry to the `modes[]` array in `src/mode/mode.c`
-   - Add `src/mode/user/your_name.c \` to `SRC` in the `Makefile`
-   - Optionally add `{ pad_xy, MODE_YOUR_NAME }` to `selectable_modes` in `src/mode/system/setup.c` (increment `#define MODES`) so it shows up on the Setup picker page
+1. Open `editor/index.html`, click **Modes…**, and add a row for the new mode — pick a free slot, a display name, and an `id` (this is the name you'll pass to the generator in step 3). Export modes.json over `editor/modes.json`.
+2. Sync the registry into the firmware: `python3 tools/sync_modes.py editor/modes.json` — this rewrites the generated regions of `include/mode/mode.h` and `src/mode/mode.c` for you.
+3. Design the layout in the editor and export it as `.json` into `editor/`. Run the generator: `python3 tools/json_to_mode.py editor/your_layout.json your_id` (use the same `id` from step 1). Any `mode_switch` widgets in the layout resolve automatically against the now-synced `mode.h`.
+4. Add `src/mode/user/your_id.c \` to `SRC` in the `Makefile` — this one step stays manual by design (lowest-risk thing to hand-edit, highest-risk thing to auto-edit wrong).
 5. `make mini`
 
 ## Repository layout (Mini-relevant parts)
@@ -132,12 +142,14 @@ editor/             Browser layout editor (HTML/CSS/JS, no build step)
   index.html
   app.js
   style.css
+  modes.json        Mode registry: slot -> name/id, edited via the Modes… panel
   mixer.json        Mixer mode source (registered, slot 0)
   mega_faders.json  Mega Faders mode source (registered, slot 1)
   mix_test.json     Mix Test mode source (registered, slot 2)
   showcase.json, basic.json, demo.json, one_fader.json   unregistered example/scratch layouts
 tools/
   json_to_mode.py   Layout-to-C code generator
+  sync_modes.py     Writes editor/modes.json's slot assignment into mode.h/mode.c
 src/mode/user/       Generated + hand-written modes
 src/mode/system/      Boot and Setup (hand-written, not generated)
 src/driver/mini/      Mini Mk3 hardware hooks, LED driver, storage/velocity stubs

@@ -120,6 +120,13 @@ let draggingType = null;
 let draggingFromXy = null;     // anchor xy of pad being dragged (null = sidebar drag)
 let previewOff = false;
 
+// modeRegistry: [{ slot, name, id }] — the user-controlled mapping of slot
+// number -> mode, consumed by tools/sync_modes.py to write mode.h/mode.c.
+// Persisted to localStorage so it survives a page reload without needing to
+// reload modes.json every time.
+const MODE_REGISTRY_KEY = 'lpcfw_mode_registry';
+let modeRegistry = [];
+
 // ── Fader helpers ─────────────────────────────────────────────────────────────
 function directionStep(dir) {
   return { up: 10, down: -10, right: 1, left: -1 }[dir] ?? 10;
@@ -286,6 +293,7 @@ function makePad(xy, label) {
 // ── Drag ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   buildGrid();
+  loadModeRegistry();
 
   document.querySelectorAll('.widget-item').forEach(item => {
     item.addEventListener('dragstart', e => {
@@ -322,6 +330,30 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.textContent = previewOff ? 'Preview: Off' : 'Preview: On';
     btn.classList.toggle('btn-active', previewOff);
     document.querySelectorAll('.pad[data-xy]').forEach(el => refreshPad(parseInt(el.dataset.xy)));
+  });
+
+  document.getElementById('btn-modes').addEventListener('click', openModesPanel);
+  document.getElementById('modes-close').addEventListener('click', closeModesPanel);
+  document.getElementById('modes-add').addEventListener('click', () => {
+    modeRegistry.push({ slot: nextFreeSlot(), name: '', id: '' });
+    saveModeRegistry();
+    renderModesPanel();
+  });
+  document.getElementById('modes-export').addEventListener('click', exportModesJSON);
+  document.getElementById('modes-load').addEventListener('click', () => document.getElementById('modes-file-input').click());
+  document.getElementById('modes-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        loadModesJSON(JSON.parse(ev.target.result));
+      } catch {
+        alert('Invalid modes.json file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   });
 });
 
@@ -628,7 +660,9 @@ function renderFaderProps(body, xy, cfg) {
 }
 
 function renderModeSwitchProps(body, xy, cfg) {
-  const modeOpts = Array.from({length: 6}, (_, i) => [i, `Mode ${i}`]);
+  const modeOpts = modeRegistry.length
+    ? modeRegistry.slice().sort((a, b) => a.slot - b.slot).map(m => [m.slot, `${m.slot}: ${m.name || m.id || 'unnamed'}`])
+    : Array.from({length: 6}, (_, i) => [i, `Mode ${i} (open Modes… to name slots)`]);
   body.appendChild(group('Target Mode', select(modeOpts, cfg.target_mode, v => { state.get(xy).target_mode = parseInt(v); refreshPad(xy); })));
 }
 
@@ -779,9 +813,11 @@ function padDisplayContent(cfg) {
       }
       wrap.appendChild(line((cfg.min_value ?? 0) + '→' + (cfg.max_value ?? 127)));
       break;
-    case 'mode_switch':
-      wrap.appendChild(line(lbl || ('⇄ M' + cfg.target_mode)));
+    case 'mode_switch': {
+      const entry = modeRegistry.find(m => m.slot === cfg.target_mode);
+      wrap.appendChild(line(lbl || (entry ? `⇄ ${entry.name || entry.id}` : '⇄ M' + cfg.target_mode)));
       break;
+    }
   }
 
   return wrap;
@@ -867,6 +903,141 @@ function refreshFader(xy) {
     seg.className = 'fader-seg';
     sel.appendChild(seg);
   });
+}
+
+// ── Mode registry ────────────────────────────────────────────────────────────
+// This is the only place mode slot assignment is decided. tools/sync_modes.py
+// reads the exported JSON and rewrites the generated regions of mode.h/mode.c
+// to match — slot numbers are never inferred from existing C/JSON state.
+function slugifyModeId(name) {
+  let s = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!s) s = 'mode';
+  if (/^[0-9]/.test(s)) s = '_' + s;
+  return s;
+}
+
+function loadModeRegistry() {
+  try {
+    const raw = localStorage.getItem(MODE_REGISTRY_KEY);
+    if (raw) modeRegistry = JSON.parse(raw);
+  } catch {
+    modeRegistry = [];
+  }
+}
+
+function saveModeRegistry() {
+  localStorage.setItem(MODE_REGISTRY_KEY, JSON.stringify(modeRegistry));
+}
+
+function nextFreeSlot() {
+  const used = new Set(modeRegistry.map(m => m.slot));
+  let i = 0;
+  while (used.has(i)) i++;
+  return i;
+}
+
+function openModesPanel() {
+  renderModesPanel();
+  document.getElementById('modes-modal').classList.remove('hidden');
+}
+
+function closeModesPanel() {
+  document.getElementById('modes-modal').classList.add('hidden');
+  saveModeRegistry();
+  state.forEach((cfg, xy) => { if (cfg.type === 'mode_switch') refreshPad(xy); });
+  if (selectedXy !== null && state.get(selectedXy)?.type === 'mode_switch') {
+    showProperties(selectedXy);
+  }
+}
+
+function renderModesPanel() {
+  const body = document.getElementById('modes-body');
+  body.innerHTML = '';
+
+  if (modeRegistry.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'modes-empty';
+    empty.textContent = 'No modes registered yet. Add one for each mode you\'ve built (matching the name passed to tools/json_to_mode.py), then assign it a slot number.';
+    body.appendChild(empty);
+  }
+
+  modeRegistry
+    .slice()
+    .sort((a, b) => a.slot - b.slot)
+    .forEach(entry => body.appendChild(renderModeRow(entry)));
+}
+
+function renderModeRow(entry) {
+  const row = document.createElement('div');
+  row.className = 'mode-row';
+
+  const slotInput = document.createElement('input');
+  slotInput.type = 'number';
+  slotInput.min = 0;
+  slotInput.max = 31;
+  slotInput.title = 'Slot number';
+  slotInput.value = entry.slot;
+  slotInput.addEventListener('change', () => {
+    entry.slot = parseInt(slotInput.value) || 0;
+    saveModeRegistry();
+    renderModesPanel();
+  });
+  row.appendChild(slotInput);
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Display name, e.g. Mixer';
+  nameInput.value = entry.name;
+  nameInput.addEventListener('input', () => {
+    entry.name = nameInput.value;
+    saveModeRegistry();
+  });
+  row.appendChild(nameInput);
+
+  const idInput = document.createElement('input');
+  idInput.type = 'text';
+  idInput.placeholder = 'id, matches json_to_mode.py name';
+  idInput.value = entry.id;
+  idInput.addEventListener('change', () => {
+    entry.id = slugifyModeId(idInput.value);
+    idInput.value = entry.id;
+    saveModeRegistry();
+  });
+  row.appendChild(idInput);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn btn-danger';
+  removeBtn.textContent = '✕';
+  removeBtn.addEventListener('click', () => {
+    modeRegistry = modeRegistry.filter(m => m !== entry);
+    saveModeRegistry();
+    renderModesPanel();
+  });
+  row.appendChild(removeBtn);
+
+  return row;
+}
+
+function exportModesJSON() {
+  const blob = new Blob([JSON.stringify({ modes: modeRegistry }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'modes.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadModesJSON(obj) {
+  if (!obj || !Array.isArray(obj.modes)) throw new Error('bad format');
+  modeRegistry = obj.modes.map(m => ({
+    slot: parseInt(m.slot) || 0,
+    name: String(m.name || ''),
+    id: slugifyModeId(String(m.id || m.name || '')),
+  }));
+  saveModeRegistry();
+  renderModesPanel();
+  state.forEach((cfg, xy) => { if (cfg.type === 'mode_switch') refreshPad(xy); });
 }
 
 // ── Load ─────────────────────────────────────────────────────────────────────

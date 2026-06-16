@@ -15,6 +15,11 @@ extern uint8_t mode;
 // Showcase/Performance/Programmer are unreachable here (Mini-only build,
 // see project memory, 2026-06-16) — their .c/.h files stay on disk and
 // still build, they're just not registered below.
+
+// Slot assignment is configured in the editor's Modes panel (editor/modes.json)
+// and synced here by tools/sync_modes.py — do not hand-edit between the
+// markers below, your changes will be overwritten on the next sync.
+// BEGIN GENERATED MODES
 #define MODE_MIXER 0
 #include "mode/user/mixer.h"
 
@@ -31,6 +36,7 @@ extern uint8_t mode;
 #include "mode/system/setup.h"
 
 #define MODES_COUNT 5
+// END GENERATED MODES
 
 struct Mode {
     char * name;

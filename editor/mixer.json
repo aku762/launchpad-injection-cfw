@@ -97,7 +97,7 @@
   },
   "69": {
     "type": "mode_switch",
-    "target_mode": 0,
+    "target_mode": 1,
     "color_on": "#113322",
     "color_off": "#113322"
   },

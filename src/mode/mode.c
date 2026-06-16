@@ -4,11 +4,15 @@
 uint8_t current_mode = 0;
 uint8_t mode = 0;
 
+// Slot assignment is configured in the editor's Modes panel (editor/modes.json)
+// and synced here by tools/sync_modes.py — do not hand-edit between the
+// markers below, your changes will be overwritten on the next sync.
 const struct Mode modes[MODES_COUNT] = {
+    // BEGIN GENERATED MODES
     {
         .name = "Mixer",
-        .color = 0x0044ff,
-        .color_dimmed = 0x001022,
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
         .init = mixer_init,
         .timer_event = mixer_timer_event,
         .surface_event = mixer_surface_event,
@@ -17,8 +21,8 @@ const struct Mode modes[MODES_COUNT] = {
     },
     {
         .name = "Mega Faders",
-        .color = 0x00ff88,
-        .color_dimmed = 0x003322,
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
         .init = mega_faders_init,
         .timer_event = mega_faders_timer_event,
         .surface_event = mega_faders_surface_event,
@@ -27,8 +31,8 @@ const struct Mode modes[MODES_COUNT] = {
     },
     {
         .name = "Mix Test",
-        .color = 0x00ff88,
-        .color_dimmed = 0x003322,
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
         .init = mix_test_init,
         .timer_event = mix_test_timer_event,
         .surface_event = mix_test_surface_event,
@@ -54,13 +58,23 @@ const struct Mode modes[MODES_COUNT] = {
         .surface_event = setup_surface_event,
         .midi_event = setup_midi_event,
         .aftertouch_event = setup_aftertouch_event
-    }
+    },
+    // END GENERATED MODES
 };
 
 void mode_switch(uint8_t m) {
+    // mode_switch() targets come from generated/hand-written mode_switch()
+    // call sites with no compile-time bounds checking — an out-of-range
+    // value here would index modes[] out of bounds and jump exec into
+    // whatever garbage function pointer that read returns. Clamp to a
+    // known-safe mode instead of risking that.
+    if (m >= MODES_COUNT) {
+        m = MODE_MIXER;
+    }
+
     uint8_t prev = current_mode;
     current_mode = m;
-    
+
     if (m != MODE_SETUP) {
         mode = m;
     }
