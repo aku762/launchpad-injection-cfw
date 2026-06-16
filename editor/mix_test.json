@@ -1,0 +1,99 @@
+{
+  "11": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#480000"
+  },
+  "13": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0000ff",
+    "color_off": "#000048"
+  },
+  "85": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 8,
+    "direction": "down",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#004800"
+  },
+  "87": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 8,
+    "direction": "down",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#8000ff",
+    "color_off": "#240048"
+  },
+  "89": {
+    "type": "mode_switch",
+    "target_mode": 1,
+    "color_on": "#00ff00",
+    "color_off": "#004800"
+  },
+  "91": {
+    "type": "note",
+    "channel": 1,
+    "note": 60,
+    "behavior": "toggle",
+    "color_on": "#4488ff",
+    "color_off": "#0a1533"
+  },
+  "92": {
+    "type": "cc",
+    "channel": 1,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "trigger",
+    "color_on": "#44cc66",
+    "color_off": "#0a2211"
+  },
+  "93": {
+    "type": "pc",
+    "channel": 1,
+    "program": 0,
+    "color_on": "#ff6633",
+    "color_off": "#331100"
+  },
+  "94": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 4,
+    "direction": "right",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "98": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#cc44ff",
+    "color_off": "#220033"
+  }
+}

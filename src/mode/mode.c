@@ -6,14 +6,14 @@ uint8_t mode = 0;
 
 const struct Mode modes[MODES_COUNT] = {
     {
-        .name = "Showcase",
-        .color = 0x22eeff,
-        .color_dimmed = 0x0a2233,
-        .init = showcase_init,
-        .timer_event = showcase_timer_event,
-        .surface_event = showcase_surface_event,
-        .midi_event = showcase_midi_event,
-        .aftertouch_event = showcase_aftertouch_event
+        .name = "Mixer",
+        .color = 0x0044ff,
+        .color_dimmed = 0x001022,
+        .init = mixer_init,
+        .timer_event = mixer_timer_event,
+        .surface_event = mixer_surface_event,
+        .midi_event = mixer_midi_event,
+        .aftertouch_event = mixer_aftertouch_event
     },
     {
         .name = "Mega Faders",
@@ -26,24 +26,14 @@ const struct Mode modes[MODES_COUNT] = {
         .aftertouch_event = mega_faders_aftertouch_event
     },
     {
-        .name = "Performance",
-        .color = 0x4000ff,
-        .color_dimmed = 0x100040,
-        .init = performance_init,
-        .timer_event = performance_timer_event,
-        .surface_event = performance_surface_event,
-        .midi_event = performance_midi_event,
-        .aftertouch_event = performance_aftertouch_event
-    },
-    {
-        .name = "Programmer",
-        .color = 0xff4000,
-        .color_dimmed = 0x401000,
-        .init = programmer_init,
-        .timer_event = programmer_timer_event,
-        .surface_event = programmer_surface_event,
-        .midi_event = programmer_midi_event,
-        .aftertouch_event = programmer_aftertouch_event
+        .name = "Mix Test",
+        .color = 0x00ff88,
+        .color_dimmed = 0x003322,
+        .init = mix_test_init,
+        .timer_event = mix_test_timer_event,
+        .surface_event = mix_test_surface_event,
+        .midi_event = mix_test_midi_event,
+        .aftertouch_event = mix_test_aftertouch_event
     },
     {
         .name = "Boot",

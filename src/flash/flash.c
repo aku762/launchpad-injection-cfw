@@ -4,13 +4,8 @@
 #include <driver/sysconf.h>
 #include <string.h>
 
-#if defined(LPPMK3)
-__attribute__((section(".cfw_bss")))
-static uint8_t flash[4092] = {0};
-#else
 __attribute__((section(".cfw_bss")))
 static uint8_t flash[1024] = {0};
-#endif
 
 #define FLASH_BUF_SIZE (sizeof(flash))
 #define PALETTE_OFFSET 6

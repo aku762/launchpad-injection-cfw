@@ -83,11 +83,14 @@ def gen_surface_case(xy, b):
                 f'                }}',
                 f'            }}',
             ]
-        else:  # trigger
+        else:  # trigger - fires once on press, no release message, but still
+                # dims back to color_off on release (visual only, like momentary)
             lines += [
                 f'            if (type) {{',
                 f'                {send(s, note, "value")}',
                 f'                set_led({xy}, {color_on});',
+                f'            }} else {{',
+                f'                set_led({xy}, {color_off});',
                 f'            }}',
             ]
 
@@ -119,11 +122,14 @@ def gen_surface_case(xy, b):
                 f'                }}',
                 f'            }}',
             ]
-        else:  # trigger
+        else:  # trigger - fires once on press, no release message, but still
+                # dims back to color_off on release (visual only, like momentary)
             lines += [
                 f'            if (type) {{',
                 f'                {send(s, cc, val_on)}',
                 f'                set_led({xy}, {color_on});',
+                f'            }} else {{',
+                f'                set_led({xy}, {color_off});',
                 f'            }}',
             ]
 
@@ -134,6 +140,8 @@ def gen_surface_case(xy, b):
             f'            if (type) {{',
             f'                {send(s, program, 0)}',
             f'                set_led({xy}, {color_on});',
+            f'            }} else {{',
+            f'                set_led({xy}, {color_off});',
             f'            }}',
         ]
 
@@ -259,7 +267,12 @@ def generate(layout, name):
     c.append('')
 
     if has_toggle:
-        c.append('static uint8_t toggle[100];')
+        # Plain .bss on Mini shares physical RAM the stock firmware keeps
+        # using after handoff (see mini_hooks.c) — anything mutable that
+        # needs to survive across mode switches must live in .cfw_bss
+        # instead, or the stock firmware's own tick will eventually
+        # clobber it.
+        c.append('__attribute__((section(".cfw_bss"))) static uint8_t toggle[100];')
         c.append('')
 
     if has_faders:
@@ -283,11 +296,12 @@ def generate(layout, name):
             c.append(f'    }},')
         c.append(f'}};')
         c.append('')
-        # mutable runtime state — explicitly set in init(), no .data init needed
-        c.append(f'static uint8_t fader_current[N_FADERS];')
+        # mutable runtime state — explicitly set in init(), no .data init needed.
+        # Must live in .cfw_bss, not plain .bss (see toggle[] comment above).
+        c.append(f'__attribute__((section(".cfw_bss"))) static uint8_t fader_current[N_FADERS];')
         # last throw position per fader, so re-entering the mode can redraw
         # LEDs from where the fader actually is instead of recomputing it
-        c.append(f'static uint8_t fader_fill[N_FADERS];')
+        c.append(f'__attribute__((section(".cfw_bss"))) static uint8_t fader_fill[N_FADERS];')
         c.append('')
         c += gen_update_fader_leds()
         c.append('')
@@ -299,6 +313,10 @@ def generate(layout, name):
     # tracks that per mode. Every call still redraws LEDs from current state.
     c.append(f'void {name}_init() {{')
     if has_toggle or has_faders:
+        # This guard must stay in plain .bss, NOT .cfw_bss: plain .bss is
+        # explicitly zeroed once by cfw_runtime_init_once() (see mini_hooks.c),
+        # while .cfw_bss is never zeroed by anything and starts as garbage. A
+        # garbage-nonzero guard here would skip the toggle/fader zero-init below.
         c.append('    static uint8_t mode_initialized;')
         c.append('    if (!mode_initialized) {')
         if has_toggle:

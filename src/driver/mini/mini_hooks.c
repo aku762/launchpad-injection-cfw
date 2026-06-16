@@ -90,14 +90,67 @@ void* CFW_RegPort_Replacement(
     return ctx;
 }
 
+extern uint32_t _sidata;
+extern uint32_t _sdata;
+extern uint32_t _edata;
+extern uint32_t _sbss;
+extern uint32_t _ebss;
+
+// Mini's plain .bss lives in the same RAM the stock firmware already used
+// before handing off to us -- nothing zeroes it for free. Without this,
+// every static/global here starts on whatever garbage the stock firmware
+// last left at that address (explains solo pads lighting up unsolicited,
+// faders starting at max instead of 0, etc). Guard words live in .cfw_bss
+// (separate CFW_RAM region, untouched by the .bss zero pass below) so the
+// "already ran" check survives; a magic-number pair (not a plain flag) is
+// used because .cfw_bss itself isn't guaranteed zero either, so a bare
+// 0/1 flag could itself start "already initialized" by sheer garbage luck.
+__attribute__((section(".cfw_bss"))) static uint32_t g_rt_magic0;
+__attribute__((section(".cfw_bss"))) static uint32_t g_rt_magic1;
+
+static inline void cfw_runtime_init_once(void) {
+    const uint32_t M0 = 0xC0DEF00Du;
+    const uint32_t M1 = 0x385FFu;
+
+    if (g_rt_magic0 == M0 && g_rt_magic1 == M1) return;
+
+    uint32_t* src = &_sidata;
+    uint32_t* dst = &_sdata;
+    while (dst < &_edata) {
+        *dst++ = *src++;
+    }
+
+    uint32_t* b = &_sbss;
+    while (b < &_ebss) {
+        *b++ = 0u;
+    }
+
+    g_rt_magic0 = M0;
+    g_rt_magic1 = M1;
+}
+
 uint8_t initialized = 0;
 
 __attribute__((section(".cfw_keep")))
 void CFW_AppTick(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) {
+    cfw_runtime_init_once();
+
     if (!initialized) {
-        initialized = 1;
+        // On a cold boot the stock firmware's own button-callback table
+        // (CB_COUNT_ADDR/CB_PTRS32) isn't guaranteed to be populated yet on
+        // the very first tick, or its entries may briefly be types other
+        // than press(0)/release(2) before the stock firmware finishes
+        // settling. `g_hooked` is just the raw table entry count -- it goes
+        // non-zero as soon as ANY entries exist, even if none of them were
+        // type 0/2 and nothing was actually hooked, which used to falsely
+        // satisfy this gate and permanently skip retrying (init_buttons()
+        // only runs while `!initialized`). Check that we actually installed
+        // both a press and a release wrapper before committing.
         init_buttons();
-        app_init();
+        if (g_type_hooked[0] && g_type_hooked[2]) {
+            initialized = 1;
+            app_init();
+        }
     }
     FW_TICK(arg1, arg2, arg3, arg4);
     app_timer_event();

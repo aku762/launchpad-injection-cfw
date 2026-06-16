@@ -6,31 +6,31 @@
 extern uint8_t current_mode;
 extern uint8_t mode;
 
-#define MODES_COUNT 6
-
 // Slots 0-3 are targetable by in-mode "mode_switch" buttons (see
 // editor widgets of type mode_switch / tools/json_to_mode.py). Every
 // value a mode_switch button can send MUST have a real entry here —
 // mode_switch() has no bounds check, so an out-of-range target reads
 // garbage out of modes[] and crashes/bricks the device.
 
-#define MODE_SHOWCASE 0
-#include "mode/user/showcase.h"
+// Showcase/Performance/Programmer are unreachable here (Mini-only build,
+// see project memory, 2026-06-16) — their .c/.h files stay on disk and
+// still build, they're just not registered below.
+#define MODE_MIXER 0
+#include "mode/user/mixer.h"
 
 #define MODE_MEGA_FADERS 1
 #include "mode/user/mega_faders.h"
 
-#define MODE_PERFORMANCE 2
-#include "mode/user/performance.h"
+#define MODE_MIX_TEST 2
+#include "mode/user/mix_test.h"
 
-#define MODE_PROGRAMMER 3
-#include "mode/user/programmer.h"
-
-#define MODE_BOOT 4
+#define MODE_BOOT 3
 #include "mode/system/boot.h"
 
-#define MODE_SETUP 5
+#define MODE_SETUP 4
 #include "mode/system/setup.h"
+
+#define MODES_COUNT 5
 
 struct Mode {
     char * name;

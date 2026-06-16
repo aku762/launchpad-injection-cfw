@@ -6,9 +6,7 @@
 #include "flash/settings.h"
 #include "flash/flash.h"
 
-#if defined(LPX) || defined(LPMINI)
 __attribute__((section(".cfw_injection_misc_1")))
-#endif
 static const uint32_t headline_leds[4][28][2] = {
     {
         { 81, 0xff0000 }, { 82, 0xff0000 }, { 71, 0xff0000 }, { 61, 0xff0000 }, { 51, 0xff0000 }, { 52, 0xff0000 }, { 83, 0xff8888 }, { 84, 0xff8888 }, { 85, 0xff8888 }, { 73, 0xff8888 }, { 63, 0xff8888 }, { 64, 0xff8888 }, { 53, 0xff8888 }, { 86, 0xff0000 }, { 88, 0xff0000 }, { 76, 0xff0000 }, { 78, 0xff0000 }, { 66, 0xff0000 }, { 67, 0xff0000 }, { 68, 0xff0000 }, { 56, 0xff0000 }, { 57, 0x100000 }, { 58, 0xff0000 },
@@ -24,19 +22,14 @@ static const uint32_t headline_leds[4][28][2] = {
     },
 };
 
-#define MODES 3
+#define MODES 2
 
 static const uint8_t selectable_modes[MODES][2] = {
-    { 11, MODE_SHOWCASE },
+    { 11, MODE_MIXER },
     { 12, MODE_MEGA_FADERS },
-    { 13, MODE_PERFORMANCE },
 };
 
-#if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
-#define PAGES 4
-#else
 #define PAGES 2
-#endif
 
 
 uint8_t page = 0;
@@ -65,7 +58,7 @@ static inline uint32_t wheel(uint8_t pos) {
 }
 
 void setup_init() {
-    if (page > PAGES) page = 0;
+    if (page >= PAGES) page = 0;
 
     for (uint8_t i = 0; i < 28; ++i) {
         set_led(headline_leds[page][i][0], headline_leds[page][i][1]);
@@ -114,37 +107,6 @@ void setup_init() {
 
         set_led(31 + brightness, 0xccccff);
     }
-    #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
-    else if (page == 2) {
-        uint8_t vel_curve = driver_get_velocity_curve();
-        uint8_t vel_enabled = driver_get_velocity_enabled();
-
-        set_led(31, vel_enabled ? 0x10ff10 : 0xff1010);
-
-        if (vel_enabled) {
-            for (uint8_t i = 0; i < 3; ++i) {
-                set_led(21 + i, 0x101010);
-            }
-
-            set_led(21 + vel_curve, 0xff4000);
-        }
-    } else if (page == 3) {
-        uint8_t at_curve = driver_get_aftertouch_curve();
-        uint8_t at_mode = driver_get_aftertouch_mode();
-
-        set_led(31, at_mode == 0 ? 0xff1010 : 0x400101);
-        set_led(32, at_mode == 1 ? 0x10ff10 : 0x014001);
-        set_led(33, at_mode == 2 ? 0x10ff10 : 0x014001);
-
-        if (at_mode != 0) {
-            for (uint8_t i = 0; i < 3; ++i) {
-                set_led(21 + i, 0x101010);
-            }
-
-            set_led(21 + at_curve, 0x4000ff);
-        }
-    }
-    #endif
 }
 
 void setup_timer_event() {
@@ -203,40 +165,6 @@ void setup_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             setup_init();
         }
     }
-    #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)
-    else if (page == 2) { // <- Velocity Page
-        if (index == 31) {
-            uint8_t enabled = driver_get_velocity_enabled();
-            driver_set_velocity_enabled(!enabled);
-            settings_velocity_enabled = !enabled;
-
-            mode_refresh();
-        } else if (index >= 21 && index <= 23) {
-            uint8_t enabled = driver_get_velocity_enabled();
-            if (!enabled) return;
-
-            uint8_t new_curve = index - 21;
-            driver_set_velocity_curve(new_curve);
-            settings_velocity_curve = new_curve;
-
-            setup_init();
-        }
-    } else if (page == 3) { // <- Aftertouch Page
-        if (index >= 31 && index <= 33) {
-            uint8_t new_mode = index - 31;
-            driver_set_aftertouch_mode(new_mode);
-            settings_aftertouch_mode = new_mode;
-
-            mode_refresh();
-        } else if (index >= 21 && index <= 23) {
-            uint8_t new_curve = index - 21;
-            driver_set_aftertouch_curve(new_curve);
-            settings_aftertouch_curve = new_curve;
-
-            setup_init();
-        }
-    }
-    #endif
 }
 
 void setup_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) { }

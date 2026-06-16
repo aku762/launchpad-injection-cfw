@@ -9,7 +9,7 @@ static void send_midi3(uint8_t status, uint8_t d1, uint8_t d2) {
     driver_send_midi(1, buf, 3);
 }
 
-static uint8_t toggle[100];
+__attribute__((section(".cfw_bss"))) static uint8_t toggle[100];
 
 typedef struct {
     uint8_t  anchor_xy;
@@ -126,8 +126,8 @@ static const FaderCfg FADERS[N_FADERS] = {
     },
 };
 
-static uint8_t fader_current[N_FADERS];
-static uint8_t fader_fill[N_FADERS];
+__attribute__((section(".cfw_bss"))) static uint8_t fader_current[N_FADERS];
+__attribute__((section(".cfw_bss"))) static uint8_t fader_fill[N_FADERS];
 
 static void update_fader_leds(uint8_t fi, uint8_t fill) {
     const FaderCfg *f = &FADERS[fi];
@@ -245,12 +245,16 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             if (type) {
                 send_midi3(0XC0, 1, 0);
                 set_led(59, 0xFF6633);
+            } else {
+                set_led(59, 0x331100);
             }
             break;
         case 69:
             if (type) {
                 send_midi3(0XC0, 0, 0);
                 set_led(69, 0xFF6633);
+            } else {
+                set_led(69, 0x331100);
             }
             break;
         case 71:
@@ -422,16 +426,16 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             }
             break;
         case 95:
-            if (type) mode_switch(0);
+            if (type) mode_switch(MODE_MIXER);
             break;
         case 96:
-            if (type) mode_switch(1);
+            if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 97:
-            if (type) mode_switch(2);
+            if (type) mode_switch(MODE_MIX_TEST);
             break;
         case 98:
-            if (type) mode_switch(3);
+            if (type) mode_switch(MODE_MIXER);
             break;
         case 21:
             if (type) {
