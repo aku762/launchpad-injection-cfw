@@ -1,3 +1,6 @@
+> **This is a fork.** It extends the upstream project with a visual layout editor and a MIDI controller mode for the Launchpad Mini Mk3. See [README.fork.md](README.fork.md) for what's new and how to use it.
+> Upstream: [anthonyhfm/launchpad-injection-cfw](https://github.com/anthonyhfm/launchpad-injection-cfw)
+
 # Launchpad Injection CFW
 
 Injection-based custom firmware for Novation Launchpad devices.

@@ -6,7 +6,7 @@
 extern uint8_t current_mode;
 extern uint8_t mode;
 
-#define MODES_COUNT 6
+#define MODES_COUNT 5
 
 #define MODE_BOOT 0
 #include "mode/system/boot.h"
@@ -19,6 +19,9 @@ extern uint8_t mode;
 
 #define MODE_PROGRAMMER 3
 #include "mode/user/programmer.h"
+
+#define MODE_DEMO 4
+#include "mode/user/demo.h"
 
 struct Mode {
     char * name;

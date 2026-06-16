@@ -1,0 +1,31 @@
+{
+  "89": { "type": "cc",   "channel": 1, "cc": 64, "value_on": 127, "value_off": 0, "behavior": "toggle",    "color_on": "#04ff89", "color_off": "#0a2211" },
+  "79": { "type": "cc",   "channel": 1, "cc": 65, "value_on": 127, "value_off": 0, "behavior": "toggle",    "color_on": "#04ff89", "color_off": "#0a2211" },
+  "69": { "type": "pc",   "channel": 1, "program": 0,                                                        "color_on": "#ff6633", "color_off": "#331100" },
+  "59": { "type": "pc",   "channel": 1, "program": 1,                                                        "color_on": "#ff6633", "color_off": "#331100" },
+
+  "81": { "type": "note", "channel": 1, "note": 60, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "82": { "type": "note", "channel": 1, "note": 62, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "83": { "type": "note", "channel": 1, "note": 64, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "84": { "type": "note", "channel": 1, "note": 65, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "85": { "type": "note", "channel": 1, "note": 67, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "86": { "type": "note", "channel": 1, "note": 69, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "87": { "type": "note", "channel": 1, "note": 71, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+  "88": { "type": "note", "channel": 1, "note": 72, "behavior": "momentary", "color_on": "#4488ff", "color_off": "#0a1533" },
+
+  "71": { "type": "note", "channel": 1, "note": 48, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "72": { "type": "note", "channel": 1, "note": 50, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "73": { "type": "note", "channel": 1, "note": 52, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "74": { "type": "note", "channel": 1, "note": 53, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "75": { "type": "note", "channel": 1, "note": 55, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "76": { "type": "note", "channel": 1, "note": 57, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "77": { "type": "note", "channel": 1, "note": 59, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+  "78": { "type": "note", "channel": 1, "note": 60, "behavior": "momentary", "color_on": "#21a7d5", "color_off": "#041533" },
+
+  "11": { "type": "cc", "channel": 1, "cc": 20, "value_on": 127, "value_off": 0, "behavior": "toggle", "color_on": "#e039e0", "color_off": "#220022" },
+  "12": { "type": "cc", "channel": 1, "cc": 21, "value_on": 127, "value_off": 0, "behavior": "toggle", "color_on": "#e039e0", "color_off": "#220022" },
+  "13": { "type": "cc", "channel": 1, "cc": 22, "value_on": 127, "value_off": 0, "behavior": "toggle", "color_on": "#e039e0", "color_off": "#220022" },
+  "14": { "type": "cc", "channel": 1, "cc": 23, "value_on": 127, "value_off": 0, "behavior": "toggle", "color_on": "#e039e0", "color_off": "#220022" },
+
+  "19": { "type": "cc", "channel": 1, "cc": 64, "value_on": 127, "value_off": 0, "behavior": "momentary", "color_on": "#f3f306", "color_off": "#1a1a00" }
+}

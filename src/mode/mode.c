@@ -44,6 +44,16 @@ const struct Mode modes[MODES_COUNT] = {
         .surface_event = programmer_surface_event,
         .midi_event = programmer_midi_event,
         .aftertouch_event = programmer_aftertouch_event
+    },
+    {
+        .name = "Demo",
+        .color = 0x00ff88,
+        .color_dimmed = 0x003322,
+        .init = demo_init,
+        .timer_event = demo_timer_event,
+        .surface_event = demo_surface_event,
+        .midi_event = demo_midi_event,
+        .aftertouch_event = demo_aftertouch_event
     }
 };
 

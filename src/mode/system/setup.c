@@ -24,11 +24,12 @@ static const uint32_t headline_leds[4][28][2] = {
     },
 };
 
-#define MODES 2
+#define MODES 3
 
 static const uint8_t selectable_modes[MODES][2] = {
     { 11, MODE_PERFORMANCE },
     { 12, MODE_PROGRAMMER },
+    { 13, MODE_DEMO },
 };
 
 #if defined(LPX) || defined(LPPMK3) || defined(LPPRO)

@@ -1,0 +1,123 @@
+{
+  "11": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 9,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": true,
+    "color_on": "#1fce26",
+    "color_off": "#c1f9cd"
+  },
+  "12": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 9,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": true,
+    "color_on": "#ff0100",
+    "color_off": "#ff918c"
+  },
+  "13": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 4,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "14": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 4,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "53": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 4,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "54": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 0,
+    "length": 4,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "85": {
+    "type": "note",
+    "channel": 1,
+    "note": 60,
+    "behavior": "momentary",
+    "color_on": "#4488ff",
+    "color_off": "#0a1533"
+  },
+  "86": {
+    "type": "note",
+    "channel": 1,
+    "note": 60,
+    "behavior": "momentary",
+    "color_on": "#4488ff",
+    "color_off": "#0a1533"
+  },
+  "87": {
+    "type": "note",
+    "channel": 1,
+    "note": 60,
+    "behavior": "momentary",
+    "color_on": "#4488ff",
+    "color_off": "#0a1533"
+  },
+  "88": {
+    "type": "note",
+    "channel": 1,
+    "note": 60,
+    "behavior": "momentary",
+    "color_on": "#4488ff",
+    "color_off": "#0a1533"
+  },
+  "93": {
+    "type": "cc",
+    "channel": 1,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "momentary",
+    "color_on": "#44cc66",
+    "color_off": "#0a2211"
+  },
+  "94": {
+    "type": "pc",
+    "channel": 1,
+    "program": 0,
+    "color_on": "#ff6633",
+    "color_off": "#331100"
+  }
+}
