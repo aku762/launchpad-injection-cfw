@@ -162,13 +162,12 @@ def extract_faders(layout):
         cc         = int(b.get('cc', 0))
         ch         = midi_ch(b.get('channel', 1))
 
-        throw_start = 1 if curve_mode else 0
-        throw_count = length - throw_start
-
+        # Always treat all pads as throw pads (no curve_mode in generated code)
+        throw_count = length
         values     = [fader_value_at(i, throw_count, min_val, max_val)
                       for i in range(throw_count)]
-        throw_pads = [xy + (throw_start + i) * step for i in range(throw_count)]
-        all_pads   = [xy + i * step for i in range(length)]
+        throw_pads = [xy + i * step for i in range(throw_count)]
+        all_pads   = throw_pads
 
         faders.append({
             'idx':         len(faders),
@@ -179,10 +178,8 @@ def extract_faders(layout):
             'channel':     ch,
             'min_value':   min_val,
             'max_value':   max_val,
-            'curve_mode':  int(curve_mode),
             'color_on':    hex_c(b.get('color_on',  '#33cccc')),
             'color_off':   hex_c(b.get('color_off', '#000000')),
-            'throw_start': throw_start,
             'throw_count': throw_count,
             'values':      values,
             'throw_pads':  throw_pads,
@@ -196,6 +193,9 @@ def extract_faders(layout):
 # ── Code block generators ─────────────────────────────────────────────────────
 
 def gen_fader_struct():
+    # Injection firmware has no .data initializer — split into const config
+    # (goes to .rodata in flash, always correct) and a separate runtime current[]
+    # that is explicitly set in init().
     return [
         'typedef struct {',
         '    uint8_t  anchor_xy;',
@@ -205,41 +205,27 @@ def gen_fader_struct():
         '    uint8_t  channel;',
         '    uint8_t  min_value;',
         '    uint8_t  max_value;',
-        '    uint8_t  curve_mode;',
         '    uint32_t color_on;',
         '    uint32_t color_off;',
-        '    /* runtime state (reset in init) */',
-        '    uint8_t  current;',
-        '    uint8_t  target;',
-        '    uint8_t  rate;',
-        '    uint8_t  timer_accum;',
-        '} Fader;',
+        '} FaderCfg;',
     ]
 
 
 def gen_update_fader_leds():
     return [
-        '/* Rate colors: instant=white  1-bar=green  4-bar=yellow  16-bar=red */',
-        'static const uint32_t RATE_COLORS[4] = { 0xFFFFFF, 0x22CC44, 0xCCCC00, 0xCC2222 };',
-        '',
-        'static void update_fader_leds(Fader *f) {',
-        '    uint8_t throw_start = f->curve_mode ? 1 : 0;',
-        '    uint8_t throw_count = f->length - throw_start;',
+        'static void update_fader_leds(uint8_t fi, uint8_t cur) {',
+        '    const FaderCfg *f = &FADERS[fi];',
         '    uint8_t fill = 0;',
         '    uint8_t range = f->max_value - f->min_value;',
-        '    if (range > 0 && throw_count > 1) {',
-        '        fill = (uint8_t)((uint16_t)(f->current - f->min_value)',
-        '                         * (throw_count - 1) / range);',
-        '    } else if (f->current >= f->max_value) {',
-        '        fill = throw_count > 0 ? throw_count - 1 : 0;',
+        '    if (range > 0 && f->length > 1) {',
+        '        fill = (uint8_t)((uint16_t)(cur - f->min_value)',
+        '                         * (f->length - 1) / range);',
+        '    } else if (cur >= f->max_value) {',
+        '        fill = f->length > 0 ? f->length - 1 : 0;',
         '    }',
-        '    for (uint8_t i = 0; i < throw_count; i++) {',
-        '        uint8_t pad = (uint8_t)((int)f->anchor_xy',
-        '                                + (throw_start + i) * f->pad_step);',
+        '    for (uint8_t i = 0; i < f->length; i++) {',
+        '        uint8_t pad = (uint8_t)((int)f->anchor_xy + i * f->pad_step);',
         '        set_led(pad, (i <= fill) ? f->color_on : f->color_off);',
-        '    }',
-        '    if (f->curve_mode) {',
-        '        set_led(f->anchor_xy, RATE_COLORS[f->rate]);',
         '    }',
         '}',
     ]
@@ -273,18 +259,10 @@ def generate(layout, name):
     if has_faders:
         c += gen_fader_struct()
         c.append('')
-        c += gen_update_fader_leds()
-        c.append('')
 
-        # Rate tables
-        c.append('/* Timer divisors per rate (tune if timer freq differs from ~360 Hz): */')
-        c.append('/* rate 0=instant  1=~1 bar@120bpm  2=~4 bars  3=~16 bars           */')
-        c.append('static const uint8_t  TIMER_DIV[4]   = {  0,   6,  24,  96 };')
-        c.append('')
-
-        # Fader array
+        # const config table — lives in .rodata (flash), no startup copy needed
         c.append(f'#define N_FADERS {len(faders)}')
-        c.append(f'static Fader faders[N_FADERS] = {{')
+        c.append(f'static const FaderCfg FADERS[N_FADERS] = {{')
         for f in faders:
             c.append(f'    {{')
             c.append(f'        .anchor_xy  = {f["anchor_xy"]},')
@@ -294,11 +272,15 @@ def generate(layout, name):
             c.append(f'        .channel    = {f["channel"]},')
             c.append(f'        .min_value  = {f["min_value"]},')
             c.append(f'        .max_value  = {f["max_value"]},')
-            c.append(f'        .curve_mode = {f["curve_mode"]},')
             c.append(f'        .color_on   = {f["color_on"]},')
             c.append(f'        .color_off  = {f["color_off"]},')
             c.append(f'    }},')
         c.append(f'}};')
+        c.append('')
+        # mutable runtime state — explicitly set in init(), no .data init needed
+        c.append(f'static uint8_t fader_current[N_FADERS];')
+        c.append('')
+        c += gen_update_fader_leds()
         c.append('')
 
     # ── init ────────────────────────────────────────────────────────────────
@@ -309,33 +291,17 @@ def generate(layout, name):
         c.append(f'    set_led({int(xy_str)}, {hex_c(b.get("color_off", "#000000"))});')
     if has_faders:
         c.append('    for (uint8_t i = 0; i < N_FADERS; i++) {')
-        c.append('        faders[i].current     = faders[i].min_value;')
-        c.append('        faders[i].target      = faders[i].min_value;')
-        c.append('        faders[i].rate        = 0;')
-        c.append('        faders[i].timer_accum = 0;')
-        c.append('        update_fader_leds(&faders[i]);')
+        c.append('        fader_current[i] = FADERS[i].min_value;')
+        c.append('        update_fader_leds(i, fader_current[i]);')
         c.append('        driver_send_midi(1,')
-        c.append('            (uint8_t[]){(uint8_t)(0xB0 | faders[i].channel),')
-        c.append('                        faders[i].cc, faders[i].min_value}, 3);')
+        c.append('            (uint8_t[]){(uint8_t)(0xB0 | FADERS[i].channel),')
+        c.append('                        FADERS[i].cc, FADERS[i].min_value}, 3);')
         c.append('    }')
     c.append('}')
     c.append('')
 
     # ── timer_event ─────────────────────────────────────────────────────────
-    c.append(f'void {name}_timer_event() {{')
-    if has_faders:
-        c.append('    for (uint8_t i = 0; i < N_FADERS; i++) {')
-        c.append('        Fader *f = &faders[i];')
-        c.append('        if (f->rate == 0 || f->current == f->target) continue;')
-        c.append('        if (++f->timer_accum < TIMER_DIV[f->rate]) continue;')
-        c.append('        f->timer_accum = 0;')
-        c.append('        if (f->current < f->target) f->current++;')
-        c.append('        else                        f->current--;')
-        c.append('        update_fader_leds(f);')
-        c.append('        driver_send_midi(1,')
-        c.append('            (uint8_t[]){(uint8_t)(0xB0 | f->channel), f->cc, f->current}, 3);')
-        c.append('    }')
-    c.append('}')
+    c.append(f'void {name}_timer_event() {{ }}')
     c.append('')
 
     # ── surface_event ────────────────────────────────────────────────────────
@@ -347,11 +313,8 @@ def generate(layout, name):
             c.append(line)
 
     if has_faders:
-        # Build flat xy -> (fader, throw_pos) map; -1 = rate-cycler anchor
         pad_cases = {}
         for f in faders:
-            if f['curve_mode']:
-                pad_cases[f['anchor_xy']] = (f, -1)
             for i, pad_xy in enumerate(f['throw_pads']):
                 pad_cases[pad_xy] = (f, i)
 
@@ -360,39 +323,15 @@ def generate(layout, name):
             fi  = f['idx']
             s   = 0xB0 | f['channel']
             cc  = f['cc']
+            val = f['values'][throw_pos]
 
             c.append(f'        case {xy}:')
             c.append(f'            if (type) {{')
-
-            if throw_pos == -1:
-                # Curve mode anchor: cycle rate
-                c += [
-                    f'                faders[{fi}].rate = (faders[{fi}].rate + 1) % 4;',
-                    f'                faders[{fi}].timer_accum = 0;',
-                    f'                set_led({xy}, RATE_COLORS[faders[{fi}].rate]);',
-                ]
-            elif throw_pos == 0:
-                # First throw: always snap to min_value instantly, ignore rate
-                val = f['min_value']
-                c += [
-                    f'                faders[{fi}].current     = {val};',
-                    f'                faders[{fi}].target      = {val};',
-                    f'                faders[{fi}].timer_accum = 0;',
-                    f'                update_fader_leds(&faders[{fi}]);',
-                    f'                {send(s, cc, val)}',
-                ]
-            else:
-                # Intermediate or max throw: set target; instant rate also sets current
-                val = f['values'][throw_pos]
-                c += [
-                    f'                faders[{fi}].target = {val};',
-                    f'                if (faders[{fi}].rate == 0) {{',
-                    f'                    faders[{fi}].current = {val};',
-                    f'                    update_fader_leds(&faders[{fi}]);',
-                    f'                    {send(s, cc, val)}',
-                    f'                }}',
-                ]
-
+            c += [
+                f'                fader_current[{fi}] = {val};',
+                f'                update_fader_leds({fi}, {val});',
+                f'                {send(s, cc, val)}',
+            ]
             c.append(f'            }}')
             c.append(f'            break;')
 

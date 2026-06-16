@@ -46,14 +46,14 @@ const struct Mode modes[MODES_COUNT] = {
         .aftertouch_event = programmer_aftertouch_event
     },
     {
-        .name = "Demo",
-        .color = 0x00ff88,
-        .color_dimmed = 0x003322,
-        .init = demo_init,
-        .timer_event = demo_timer_event,
-        .surface_event = demo_surface_event,
-        .midi_event = demo_midi_event,
-        .aftertouch_event = demo_aftertouch_event
+        .name = "One Fader",
+        .color = 0xff0100,
+        .color_dimmed = 0x330000,
+        .init = one_fader_init,
+        .timer_event = one_fader_timer_event,
+        .surface_event = one_fader_surface_event,
+        .midi_event = one_fader_midi_event,
+        .aftertouch_event = one_fader_aftertouch_event
     }
 };
 

@@ -20,8 +20,8 @@ extern uint8_t mode;
 #define MODE_PROGRAMMER 3
 #include "mode/user/programmer.h"
 
-#define MODE_DEMO 4
-#include "mode/user/demo.h"
+#define MODE_ONE_FADER 4
+#include "mode/user/one_fader.h"
 
 struct Mode {
     char * name;

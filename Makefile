@@ -123,7 +123,7 @@ SRC=$(DRIVER_SRC) \
 	src/mode/system/setup.c \
 	src/mode/user/performance.c \
 	src/mode/user/programmer.c \
-	src/mode/user/demo.c \
+	src/mode/user/one_fader.c \
 
 INCLUDES=-Iinclude
 
