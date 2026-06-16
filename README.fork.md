@@ -21,7 +21,7 @@ Open `editor/index.html` directly in any browser — no server needed.
 | `note` | Sends Note On/Off. Momentary, toggle, or trigger behavior. |
 | `cc` | Sends a CC value on press/release. Momentary or toggle. |
 | `pc` | Sends a Program Change on press. |
-| `fader` | Multi-pad fader with stepped CC output and optional slew rate. |
+| `fader` | Multi-pad fader with stepped CC output and optional slew rate. ⚠️ Work in progress — not working on device yet. |
 | `mode_switch` | Switches to another firmware mode slot. |
 
 **Each widget supports:**
