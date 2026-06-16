@@ -2,7 +2,7 @@
 
 A front-end on top of [anthonyhfm/launchpad-injection-cfw](https://github.com/anthonyhfm/launchpad-injection-cfw)'s binary injection system, focused entirely on the **Launchpad Mini Mk3** and built out with a visual layout editor, a JSON-to-C mode generator, and a set of Mini-specific size optimizations.
 
-The injection technique itself — extracting the stock firmware, splicing in custom code, hooking call sites to redirect execution — is upstream's reverse-engineering work, not ours. What this repo adds is everything on top of that foundation for one specific device: a browser editor non-programmers can use to lay out a controller surface, a generator that turns that layout into compiled C, a couple of hand-built modes (Mixer-style and otherwise), and a string of cuts to claw back flash on a chip that only has ~15KB of injectable space to begin with.
+The injection technique itself — extracting the stock firmware, splicing in custom code, hooking call sites to redirect execution — is upstream's reverse-engineering work, not ours. What this repo adds is everything on top of that foundation for one specific device: a browser editor non-programmers can use to lay out a controller surface, a generator that turns that layout into compiled C, a set of generated modes (Mixer, Mega Faders, Mix Test) built with that editor/generator pair, and a string of cuts to claw back flash on a chip that only has ~15KB of injectable space to begin with.
 
 > Note: This repository does **not** distribute Novation firmware.
 > You must provide your own official `.syx` update file. Use at your own risk.
@@ -28,12 +28,17 @@ A browser-based pad editor (`editor/index.html`) for designing MIDI controller l
 | Type | Description |
 |------|-------------|
 | `note` | Sends Note On/Off. Momentary, toggle, or trigger behavior. |
-| `cc` | Sends a CC value on press/release. Momentary or toggle. |
+| `cc` | Sends a CC value on press/release. Momentary, toggle, or trigger. |
 | `pc` | Sends a Program Change on press. |
 | `fader` | Multi-pad fader with stepped CC output, optional curve-based slew rate. |
 | `mode_switch` | Switches to another firmware mode slot. |
 
 Each widget supports a `label` (up to 6 characters, shown on the pad) and a longer `description` shown only in the editor's properties panel.
+
+**Behavior semantics for `note`/`cc`:**
+- `momentary` — sends on-value while held, off-value on release; LED follows the same way.
+- `toggle` — flips persistent state on press only; sends on/off value and lights on/off color based on the resulting state. State lives in `.cfw_bss` (see RAM notes below) and survives mode switches.
+- `trigger` — fires the on-value once per press and never sends an off-value (no MIDI message at all on release). The LED still dims to the off color on release, purely visual, so it reads like a momentary pad without producing a spurious release message downstream.
 
 **Fader features:**
 - Variable length (2–9 pads), vertical or horizontal
@@ -50,27 +55,44 @@ Converts a layout `.json` into a ready-to-compile C firmware mode:
 python3 tools/json_to_mode.py editor/my_layout.json my_mode
 ```
 
-Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`, and prints the manual registration steps (below). Generated modes trade flash for flexibility — each button gets its own unrolled case, so a fully-mapped 80-button layout can run several KB. Hand-written modes (see Performance/Programmer/Mixer-style code) use a generic handler plus a lookup table instead, at a fraction of the cost — reach for the generator for one-off/custom layouts, hand-write anything meant to be a permanent, space-efficient mode.
+Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`, and prints the manual registration steps (below). Generated modes trade flash for flexibility — each button gets its own unrolled case, so a fully-mapped 80-button layout can run several KB. Hand-written modes (see Performance/Programmer, currently unreachable — below) use a generic handler plus a lookup table instead, at a fraction of the cost — reach for the generator for one-off/custom layouts, hand-write anything meant to be a permanent, space-efficient mode.
 
 ### Modes currently shipping
 
 | Slot | Mode | Origin | Notes |
 |---|---|---|---|
-| 0 | Showcase | generated | full-grid widget demo |
-| 1 | Mega Faders | generated | multi-fader layout |
-| 2 | Performance | stock CFW | velocity-curve code stripped on Mini (no hardware velocity/aftertouch support) |
-| 3 | Programmer | stock CFW | same |
+| 0 | Mixer | generated (`editor/mixer.json`) | 8-channel CC mixer: one fader per channel plus 4 toggle pads |
+| 1 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout, momentary/toggle pads, `mode_switch` cluster |
+| 2 | Mix Test | generated (`editor/mix_test.json`) | scratch layout exercising every generator widget/behavior combo (toggle, trigger, fader, pc, mode_switch) |
 | — | Boot | hand-written | one-shot startup animation, not user-navigable |
-| — | Setup | hand-written | long-press **Stop-Solo-Mute (pad 19)** to enter; page 0 picks a mode, page 1 sets LED brightness |
+| — | Setup | hand-written | long-press **Stop-Solo-Mute (pad 19)** to enter; page 0 picks Mixer or Mega Faders, page 1 sets LED brightness |
 
-Session/Drums/Keys/User (the four top-row buttons under the "Custom" silkscreen) are wired as the four `mode_switch` targets in Mega Faders, matching the physical button cluster.
+Performance and Programmer (the original hand-written, stock-CFW-derived modes) still live in `src/mode/user/` and still compile, but are no longer registered in `modes[]` — Mini has no hardware velocity/aftertouch support, so neither mapped well onto this device, and their slots were reclaimed for Mixer/Mix Test. Re-registering them is a `mode.h`/`mode.c` edit away if you want them back.
 
-### Mini-specific optimizations
+Each mode's own `mode_switch` pads target whichever of the three registered modes makes sense for that layout — see the `case` blocks in `mixer.c`/`mega_faders.c`/`mix_test.c` for the exact pad numbers, since these get hand-patched after each regeneration (the generator always emits raw `mode_switch(<slot number>)`; those literals get replaced with the `MODE_*` macros from `mode.h` by hand — see "Adding a new mode" below).
 
-- Stripped velocity-curve and aftertouch handling out of the shared Performance/Programmer code on Mini builds only (`#if defined(LPMINI)`), since the hardware has neither — saved ~600 bytes with zero functional change.
-- Collapsed the mode registry from 8 slots (two unused placeholders) down to exactly the modes that are reachable.
-- Moved the global hold-to-Setup gesture off the Session button onto Stop-Solo-Mute, freeing Session to double as a normal `mode_switch` target without it feeling like an awkward overload.
-- Verified the chip's real flash capacity (128KB) directly via the hardware `FLASHSIZE` register rather than guessing from RAM size — ruled out a hoped-for ~128KB of "extra" flash that turned out not to exist.
+### Space-saving measures
+
+Mini's injectable gap is small (~15KB) and most of it is gone once the stock-firmware hook scaffolding and a couple of generated modes are in. Everything below was cut specifically to keep that budget workable:
+
+- **Removed the boot animation entirely** (`src/driver/mini/mini_boot.c`) — 2,613 lines of per-frame LED color tables, the single largest chunk of dead weight in this build. It also cost ~2.5s of boot time where the device looked alive but ignored all input, which made testing whatever mode it booted into more annoying than it needed to be. Mini now hands off straight into `MODE_MIXER` on boot.
+- **Stripped velocity-curve and aftertouch handling** out of the shared Performance/Programmer code on Mini builds only (`#if defined(LPMINI)`), since the hardware has neither — saved ~600 bytes with zero functional change.
+- **Stripped non-Mini `#ifdef` branches** out of shared code that used to serve the whole device matrix — `sysex.c`, `conversion.c`, `palette.c`, `flash.c`, `led.c`, `app.c`/`app.h`, `driver.h`, `setup.c`, `performance.c`. None of those branches could ever execute on Mini; they were dead weight on every build.
+- **Unregistered Performance/Programmer/Showcase from `modes[]`** rather than deleting them outright — with `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections` already in the build flags, anything no longer referenced from `modes[]` is discarded by the linker entirely (confirmed via `build/mini/fw.map`'s discarded-input-sections list, where their `.text.*_init`/`*_surface_event`/etc. all show address `0x00000000`). Net effect is the same as deleting the code, but the source stays around if a future mode wants to reuse a piece of it.
+- **Removed the lpp/lppmk3/lpx/mk2 device drivers, linker scripts, patch configs, and prebuilt binaries** from the repo entirely — this fork only ever targets Mini Mk3, and none of that ever built into the Mini image, but keeping it around was pure repo noise.
+- **Moved the global hold-to-Setup gesture** off the Session button onto Stop-Solo-Mute, freeing Session to double as a normal `mode_switch` target without it feeling like an awkward overload. (Not a flash saving, but bundled with the rest of this pass.)
+- **Verified the chip's real flash capacity** (128KB) directly via the hardware `FLASHSIZE` register rather than guessing from RAM size — ruled out a hoped-for ~128KB of "extra" flash that turned out not to exist.
+
+### RAM safety on Mini
+
+Mini's injected code patches into the **already-running** stock firmware rather than replacing it outright (unlike upstream's other targets, which get full linker-controlled RAM). Two consequences fall out of that:
+
+1. **Plain `.bss` is shared, live RAM** — the same bytes the stock firmware was using before handoff, and its own `FW_TICK()` keeps running every tick after handoff too. Nothing zeroes that region for free, and the stock firmware can still write into it. `CFW_AppTick` (`src/driver/mini/mini_hooks.c`) explicitly zeroes plain `.bss` exactly once via `cfw_runtime_init_once()`, guarded by a magic-number pair (not a plain flag, since the guard itself can't rely on starting at zero — see point 2) stored in `.cfw_bss`.
+2. **`.cfw_bss`** is a separate, dedicated region (`CFW_RAM`, `linker/stm32f401_lpmini.ld`) that the stock firmware never touches — but it is *never zero-initialized by anything*. Anything placed there must be explicitly set before use.
+
+The practical rule this produces: mutable per-mode state that must survive mode switches without being clobbered by the stock firmware (`toggle[]`, fader position arrays) belongs in `.cfw_bss`, explicitly zeroed once by a `mode_initialized` guard — but that guard itself must stay in plain `.bss`, since it depends on actually starting at zero on the very first boot. Putting the guard in `.cfw_bss` was tried and immediately regressed (garbage-true guard skips the zero pass, mode reopens with garbage toggle/fader state) — `tools/json_to_mode.py`'s generator and the hand-written mode files all follow the corrected split now.
+
+`CFW_AppTick` also gates `app_init()` behind confirming that **both** a press and a release callback were actually installed in the stock firmware's button table (`g_type_hooked[0] && g_type_hooked[2]`), not just that the table has any entries — on a cold boot the table can be transiently non-empty before the stock firmware finishes populating it, which used to false-positive and permanently skip retrying.
 
 ## Building (Mini Mk3)
 
@@ -87,6 +109,7 @@ To rebuild after editing a layout JSON:
 
 ```bash
 python3 tools/json_to_mode.py editor/mega_faders.json mega_faders
+# re-patch any mode_switch(N) literals to MODE_* macros (see Modes table above) before building
 make mini
 ```
 
@@ -94,12 +117,13 @@ make mini
 
 1. Design the layout in `editor/index.html` and export it as `.json` into `editor/`.
 2. Run the generator: `python3 tools/json_to_mode.py editor/your_layout.json your_name`
-3. Register it manually:
+3. If the layout has a `mode_switch` widget, the generator emits `mode_switch(<raw slot number>)` — hand-patch each one to the matching `MODE_*` macro from `mode.h` (`mode_switch()` has no bounds check, so a stale/out-of-range literal reads garbage and can crash/brick the device). This has to be redone after every regeneration of that mode.
+4. Register it manually:
    - Add `#define MODE_YOUR_NAME N` and `#include "mode/user/your_name.h"` to `include/mode/mode.h`
    - Add an entry to the `modes[]` array in `src/mode/mode.c`
    - Add `src/mode/user/your_name.c \` to `SRC` in the `Makefile`
    - Optionally add `{ pad_xy, MODE_YOUR_NAME }` to `selectable_modes` in `src/mode/system/setup.c` (increment `#define MODES`) so it shows up on the Setup picker page
-4. `make mini`
+5. `make mini`
 
 ## Repository layout (Mini-relevant parts)
 
@@ -108,8 +132,10 @@ editor/             Browser layout editor (HTML/CSS/JS, no build step)
   index.html
   app.js
   style.css
-  mega_faders.json  Mega Faders mode source
-  showcase.json     Showcase mode source
+  mixer.json        Mixer mode source (registered, slot 0)
+  mega_faders.json  Mega Faders mode source (registered, slot 1)
+  mix_test.json     Mix Test mode source (registered, slot 2)
+  showcase.json, basic.json, demo.json, one_fader.json   unregistered example/scratch layouts
 tools/
   json_to_mode.py   Layout-to-C code generator
 src/mode/user/       Generated + hand-written modes
@@ -140,25 +166,8 @@ git merge upstream/code
 
 Recent work here has gone well beyond additive changes — the global event routing (`app.c`), mode registry (`mode.c`/`mode.h`), Setup menu (`setup.c`), and the shared Performance/Programmer code have all been modified for Mini specifically. Expect merge conflicts in those files when pulling upstream changes, not just in the four original registration points.
 
-## Open note to Novation (a love letter, kind of)
-
-*From upstream's maintainer, [anthonyhfm](https://github.com/anthonyhfm):*
-
-I love the Launchpad platform. The Lightshow community has used and supported Launchpads for years, and many of us bought newer devices expecting the same reliability and workflow.
-
-In the specific workflows we rely on for performances, the Launchpad Pro Mk3 has been a frustrating experience. This project exists because we needed practical fixes and community-driven improvements, while still keeping the stock firmware as the underlying driver layer.
-
-I am genuinely open to collaboration. If Novation is interested, I'm happy to share findings, repro cases, and proposals that could help improve the official firmware for performance and lightshow use-cases.
-
-**Contact:** contact@anthonyhfm.dev
-
 ## Credits
 
 - [anthonyhfm](https://github.com/anthonyhfm) for the injection/patching system this entire project is built on
 - [aku762](https://github.com/aku762) for the Mini Mk3 editor, code generator, and size optimizations in this fork
-- [Kaskobi](https://youtube.com/@kaskobi) for creating the individual boot animations for all launchpads
-
-The creation of this project was inspired by:
-
-- [Gabriel Valky (gabonator)](https://github.com/gabonator)
-- [mat1jaczyyy](https://github.com/mat1jaczyyy)
+- [Kaskobi](https://youtube.com/@kaskobi) originally created the per-device boot animations upstream; Mini's copy was removed in this fork (see Space-saving measures above) but the credit stands for the work itself
