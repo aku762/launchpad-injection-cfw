@@ -23,6 +23,24 @@
     "color_on": "#0000ff",
     "color_off": "#000048"
   },
+  "59": {
+    "type": "mode_switch",
+    "target_mode": 3,
+    "color_on": "#ff8000",
+    "color_off": "#482400"
+  },
+  "69": {
+    "type": "mode_switch",
+    "target_mode": 2,
+    "color_on": "#00ff00",
+    "color_off": "#004800"
+  },
+  "79": {
+    "type": "mode_switch",
+    "target_mode": 1,
+    "color_on": "#0000ff",
+    "color_off": "#000048"
+  },
   "85": {
     "type": "fader",
     "channel": 1,
@@ -49,9 +67,9 @@
   },
   "89": {
     "type": "mode_switch",
-    "target_mode": 1,
-    "color_on": "#00ff00",
-    "color_off": "#004800"
+    "target_mode": 0,
+    "color_on": "#ff0000",
+    "color_off": "#480000"
   },
   "91": {
     "type": "note",
@@ -82,18 +100,12 @@
     "type": "fader",
     "channel": 1,
     "cc": 0,
-    "length": 4,
+    "length": 5,
     "direction": "right",
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
     "color_on": "#33cccc",
     "color_off": "#0a2222"
-  },
-  "98": {
-    "type": "mode_switch",
-    "target_mode": 0,
-    "color_on": "#cc44ff",
-    "color_off": "#220033"
   }
 }

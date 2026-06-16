@@ -6,7 +6,7 @@
 // where the device looked alive (LED animation) but ignored all input,
 // confusing testing of the mode it boots into. Mini now hands off instantly.
 void boot_init() {
-    mode_switch(MODE_MIXER);
+    mode_switch(MODE_DEFAULT);
 }
 
 void boot_timer_event() { }

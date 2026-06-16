@@ -2,10 +2,24 @@
 
 A front-end on top of [anthonyhfm/launchpad-injection-cfw](https://github.com/anthonyhfm/launchpad-injection-cfw)'s binary injection system, focused entirely on the **Launchpad Mini Mk3** and built out with a visual layout editor, a JSON-to-C mode generator, and a set of Mini-specific size optimizations.
 
-The injection technique itself — extracting the stock firmware, splicing in custom code, hooking call sites to redirect execution — is upstream's reverse-engineering work, not ours. What this repo adds is everything on top of that foundation for one specific device: a browser editor non-programmers can use to lay out a controller surface, a generator that turns that layout into compiled C, a set of generated modes (Mixer, Mega Faders, Mix Test) built with that editor/generator pair, and a string of cuts to claw back flash on a chip that only has ~15KB of injectable space to begin with.
+The injection technique itself — extracting the stock firmware, splicing in custom code, hooking call sites to redirect execution — is upstream's reverse-engineering work, not ours. What this repo adds is everything on top of that foundation for one specific device: a browser editor non-programmers can use to lay out a controller surface, a generator that turns that layout into compiled C, a set of generated modes (Mix 1, Mix 2, Mega Faders, Mix Test) built with that editor/generator pair, and a string of cuts to claw back flash on a chip that only has ~15KB of injectable space to begin with.
 
 > Note: This repository does **not** distribute Novation firmware.
 > You must provide your own official `.syx` update file. Use at your own risk.
+
+## Pipeline overview
+
+End-to-end, a layout goes from "drawn in a browser" to "flashable file" in seven steps:
+
+1. **Editor (`editor/index.html`, browser, no server)** — design a layout visually, export it as JSON (e.g. `editor/mixer1.json`). Separately, `editor/modes.json` is not a layout — it's the registry of which layout occupies which firmware slot (see Mode Registry below).
+2. **`tools/json_to_mode.py <layout>.json <id>`** — transforms one layout JSON into real C: `src/mode/user/<id>.c` + `include/mode/user/<id>.h`. Resolves any `mode_switch` buttons in that layout against whatever's currently registered in `mode.h`.
+3. **`tools/sync_modes.py editor/modes.json`** — writes the registry into `mode.h`/`mode.c`'s generated regions and the Makefile's `USER_MODE_SRC` list, so the right `.c` files actually get compiled (see Mode Registry below). Run this *before* step 2 if you've changed slot assignment, since step 2 resolves against whatever's currently synced.
+4. **`make mini`** — a real `arm-none-eabi-gcc`/`ld` compile-and-link of all the C (your generated modes plus the hand-written firmware glue — `app.c`, drivers, LED code, `mode.c`, etc.), placed at specific flash addresses via `linker/stm32f401_lpmini.ld`. The linker also pulls in two binary blobs (`blob_part1.o`/`blob_part2.o`) — literal byte-slices of the extracted *original* Novation firmware, split around the gap your code goes into. The output (`fw.elf`/`fw.bin`) is one continuous image — original-firmware-bytes, then your compiled code, then more original-firmware-bytes — not yet hooked together, just sitting adjacent in flash.
+5. **`tools/patcher.py` + `patches/lpmini.json`** — the actual "injection": rewrites specific call instructions inside that merged binary (`app_tick_hook`, `midi_register_hook`) so the original firmware's existing code jumps into your new code. Output: `fw.patched.bin`.
+6. **`tools/syxtool.py`** — wraps `fw.patched.bin` in Novation's SysEx update envelope → `build/mini-cfw.syx`, the file you actually flash to the device.
+7. **`tools/bipa.py`** (side artifact) — produces `build/mini-cfw.bipa`, a binary-diff format against the original, used for distribution rather than flashing.
+
+`make mini` runs steps 4-7 in one shot; steps 1-3 are manual (editor export + the two Python scripts) and only need re-running for whatever you actually changed.
 
 ## How the injection works
 
@@ -69,31 +83,32 @@ python3 tools/sync_modes.py editor/modes.json
 
 This rewrites only the fenced `// BEGIN/END GENERATED MODES` regions inside `include/mode/mode.h` and `src/mode/mode.c` — the `#define MODE_*`/`#include` block in the header and the corresponding `modes[]` struct entries in the source. Boot and Setup are system-only modes (not built in the editor) and are always appended automatically right after your registered modes, at the next two free slots. Everything else in both files — `struct Mode`, `mode_switch()`, `mode_refresh()` — is untouched. The Makefile's `SRC` list is **not** touched by this script; adding a new mode's `.c` file there is still a manual one-line edit (see "Adding a new mode" below).
 
-Once the registry is synced, the editor's `mode_switch` widget dropdown and on-pad labels automatically show real mode names/slots instead of bare numbers — and since `mode_switch()` clamps any out-of-range target to `MODE_MIXER` (see RAM/flash safety notes), a layout that targets a slot you haven't registered yet degrades safely instead of bricking the device.
+Once the registry is synced, the editor's `mode_switch` widget dropdown and on-pad labels automatically show real mode names/slots instead of bare numbers — and since `mode_switch()` clamps any out-of-range target to `MODE_DEFAULT` (slot 0, see RAM/flash safety notes), a layout that targets a slot you haven't registered yet degrades safely instead of bricking the device.
 
 ### Modes currently shipping
 
 | Slot | Mode | Origin | Notes |
 |---|---|---|---|
-| 0 | Mixer | generated (`editor/mixer.json`) | 8-channel CC mixer: one fader per channel plus 4 toggle pads |
-| 1 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout, momentary/toggle pads, `mode_switch` cluster |
-| 2 | Mix Test | generated (`editor/mix_test.json`) | scratch layout exercising every generator widget/behavior combo (toggle, trigger, fader, pc, mode_switch) |
+| 0 | Mix 1 | generated (`editor/mixer1.json`) | 8-channel CC mixer: one fader per channel plus 4 toggle pads |
+| 1 | Mix 2 | generated (`editor/mixer2.json`) | second bank of the same layout, on its own slot/`mode_switch` target |
+| 2 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout, momentary/toggle pads, `mode_switch` cluster |
+| 3 | Mix Test | generated (`editor/mix_test.json`) | scratch layout exercising every generator widget/behavior combo (toggle, trigger, fader, pc, mode_switch) |
 | — | Boot | hand-written, system-only | one-shot startup animation, not user-navigable |
 | — | Setup | hand-written, system-only | long-press **Stop-Solo-Mute (pad 19)** to enter; single page, sets LED brightness only |
 
-Performance and Programmer (the original hand-written, stock-CFW-derived modes) still live in `src/mode/user/` and still compile, but are no longer registered in `modes[]` — Mini has no hardware velocity/aftertouch support, so neither mapped well onto this device, and their slots were reclaimed for Mixer/Mix Test. Re-registering them means adding them to the Modes panel and re-running `sync_modes.py`.
+The Makefile only ever compiles `src/mode/user/<id>.c` for modes currently listed in `editor/modes.json` (`tools/sync_modes.py` writes that list into the Makefile's generated `USER_MODE_SRC` block — see Mode Registry below). Performance, Programmer, Showcase, and the original single-bank Mixer (the original hand-written/generated modes this device used to ship) all still have their `.c`/`.h` pairs sitting untouched in `src/mode/user/`/`include/mode/user/`, but none of them are compiled into the current build — they're not in `modes.json`. Bringing one back is just adding it to the Modes panel (with an `id` matching its existing filename) and re-running `sync_modes.py`; no source needs to change.
 
-Each mode's own `mode_switch` pads target whichever of the three registered modes makes sense for that layout — see the `case` blocks in `mixer.c`/`mega_faders.c`/`mix_test.c` for the exact pad numbers, and `editor/mixer.json`/`mega_faders.json`/`mix_test.json` for how they're configured in the editor.
+Each mode's own `mode_switch` pads target whichever of the other registered modes makes sense for that layout — see the `case` blocks in `mixer1.c`/`mixer2.c`/`mega_faders.c`/`mix_test.c` for the exact pad numbers, and `editor/mixer1.json`/`mixer2.json`/`mega_faders.json`/`mix_test.json` for how they're configured in the editor.
 
 ### Space-saving measures
 
 Mini's injectable gap is small (~15KB) and most of it is gone once the stock-firmware hook scaffolding and a couple of generated modes are in. Everything below was cut specifically to keep that budget workable:
 
-- **Removed the boot animation entirely** (`src/driver/mini/mini_boot.c`) — 2,613 lines of per-frame LED color tables, the single largest chunk of dead weight in this build. It also cost ~2.5s of boot time where the device looked alive but ignored all input, which made testing whatever mode it booted into more annoying than it needed to be. Mini now hands off straight into `MODE_MIXER` on boot.
+- **Removed the boot animation entirely** (`src/driver/mini/mini_boot.c`) — 2,613 lines of per-frame LED color tables, the single largest chunk of dead weight in this build. It also cost ~2.5s of boot time where the device looked alive but ignored all input, which made testing whatever mode it booted into more annoying than it needed to be. Mini now hands off straight into `MODE_DEFAULT` (whichever mode is in slot 0) on boot.
 - **Simplified Setup down to a single brightness page** (`src/mode/system/setup.c`) — dropped the original mode-picker/palette page entirely now that mode switching is handled by `mode_switch` buttons placed directly in a layout via the editor, making a dedicated picker page redundant. Saved ~616 bytes of flash and a few bytes of RAM.
-- **Stripped velocity-curve and aftertouch handling** out of the shared Performance/Programmer code on Mini builds only (`#if defined(LPMINI)`), since the hardware has neither — saved ~600 bytes with zero functional change.
+- **Stripped velocity-curve and aftertouch handling** out of the shared Performance/Programmer code on Mini builds only (`#if defined(LPMINI)`), since the hardware has neither — saved ~600 bytes with zero functional change. (Performance/Programmer aren't currently compiled at all — see Mode Registry below — but the strip still applies if either is ever added back via `modes.json`.)
 - **Stripped non-Mini `#ifdef` branches** out of shared code that used to serve the whole device matrix — `sysex.c`, `conversion.c`, `palette.c`, `flash.c`, `led.c`, `app.c`/`app.h`, `driver.h`, `setup.c`, `performance.c`. None of those branches could ever execute on Mini; they were dead weight on every build.
-- **Unregistered Performance/Programmer/Showcase from `modes[]`** rather than deleting them outright — with `-ffunction-sections -fdata-sections` and `-Wl,--gc-sections` already in the build flags, anything no longer referenced from `modes[]` is discarded by the linker entirely (confirmed via `build/mini/fw.map`'s discarded-input-sections list, where their `.text.*_init`/`*_surface_event`/etc. all show address `0x00000000`). Net effect is the same as deleting the code, but the source stays around if a future mode wants to reuse a piece of it.
+- **Only compile what's registered** — the Makefile's mode source list (`USER_MODE_SRC`) is generated from `editor/modes.json`, so Performance/Programmer/Showcase/the original Mixer aren't compiled into the build at all right now, not just unregistered-but-linked. Their `.c`/`.h` files stay on disk untouched and are picked back up automatically the moment they're added back to the Modes panel.
 - **Removed the lpp/lppmk3/lpx/mk2 device drivers, linker scripts, patch configs, and prebuilt binaries** from the repo entirely — this fork only ever targets Mini Mk3, and none of that ever built into the Mini image, but keeping it around was pure repo noise.
 - **Moved the global hold-to-Setup gesture** off the Session button onto Stop-Solo-Mute, freeing Session to double as a normal `mode_switch` target without it feeling like an awkward overload. (Not a flash saving, but bundled with the rest of this pass.)
 - **Verified the chip's real flash capacity** (128KB) directly via the hardware `FLASHSIZE` register rather than guessing from RAM size — ruled out a hoped-for ~128KB of "extra" flash that turned out not to exist.
@@ -143,14 +158,15 @@ editor/             Browser layout editor (HTML/CSS/JS, no build step)
   app.js
   style.css
   modes.json        Mode registry: slot -> name/id, edited via the Modes… panel
-  mixer.json        Mixer mode source (registered, slot 0)
-  mega_faders.json  Mega Faders mode source (registered, slot 1)
-  mix_test.json     Mix Test mode source (registered, slot 2)
-  showcase.json, basic.json, demo.json, one_fader.json   unregistered example/scratch layouts
+  mixer1.json       Mix 1 mode source (registered, slot 0)
+  mixer2.json       Mix 2 mode source (registered, slot 1)
+  mega_faders.json  Mega Faders mode source (registered, slot 2)
+  mix_test.json     Mix Test mode source (registered, slot 3)
+  mixer.json, showcase.json, basic.json, demo.json, one_fader.json   unregistered example/scratch layouts — not currently compiled
 tools/
   json_to_mode.py   Layout-to-C code generator
-  sync_modes.py     Writes editor/modes.json's slot assignment into mode.h/mode.c
-src/mode/user/       Generated + hand-written modes
+  sync_modes.py     Writes editor/modes.json's slot assignment into mode.h/mode.c/Makefile
+src/mode/user/       Generated + hand-written modes — only files for modes currently in editor/modes.json are compiled
 src/mode/system/      Boot and Setup (hand-written, not generated)
 src/driver/mini/      Mini Mk3 hardware hooks, LED driver, storage/velocity stubs
 linker/stm32f401_lpmini.ld   Linker script defining the injectable flash region

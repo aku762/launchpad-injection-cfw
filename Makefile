@@ -29,6 +29,17 @@ MINI_FREE_END=0x0801a7ef
 OFF_FREE_START=$(shell printf %d $$(( $(MINI_FREE_START) - $(MINI_BASE) )))
 OFF_AFTER_FREE_END=$(shell printf %d $$(( $(MINI_FREE_END) - $(MINI_BASE) + 1 )))
 
+# User modes are configured in the editor's Modes panel (editor/modes.json)
+# and synced here by tools/sync_modes.py - do not hand-edit between the
+# markers below, your changes will be overwritten on the next sync.
+# BEGIN GENERATED MODE SRC
+USER_MODE_SRC= \
+	src/mode/user/mixer1.c \
+	src/mode/user/mixer2.c \
+	src/mode/user/mega_faders.c \
+	src/mode/user/mix_test.c
+# END GENERATED MODE SRC
+
 SRC=$(DRIVER_SRC) \
 	src/app.c \
 	src/led/led.c \
@@ -39,12 +50,7 @@ SRC=$(DRIVER_SRC) \
 	src/flash/flash.c \
 	src/mode/mode.c \
 	src/mode/system/setup.c \
-	src/mode/user/performance.c \
-	src/mode/user/programmer.c \
-	src/mode/user/mega_faders.c \
-	src/mode/user/showcase.c \
-	src/mode/user/mixer.c \
-	src/mode/user/mix_test.c \
+	$(USER_MODE_SRC) \
 
 INCLUDES=-Iinclude
 

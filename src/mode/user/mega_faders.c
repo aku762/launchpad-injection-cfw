@@ -426,16 +426,16 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             }
             break;
         case 95:
-            if (type) mode_switch(MODE_MIXER);
+            if (type) mode_switch(MODE_MIXER1);
             break;
         case 96:
-            if (type) mode_switch(MODE_MEGA_FADERS);
+            if (type) mode_switch(MODE_MIXER2);
             break;
         case 97:
-            if (type) mode_switch(MODE_MIX_TEST);
+            if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 98:
-            if (type) mode_switch(MODE_MIXER);
+            if (type) mode_switch(MODE_MIX_TEST);
             break;
         case 21:
             if (type) {

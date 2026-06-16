@@ -1,0 +1,202 @@
+{
+  "11": {
+    "type": "fader",
+    "channel": 9,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "12": {
+    "type": "fader",
+    "channel": 10,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "13": {
+    "type": "fader",
+    "channel": 11,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "14": {
+    "type": "fader",
+    "channel": 12,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "15": {
+    "type": "fader",
+    "channel": 13,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "16": {
+    "type": "fader",
+    "channel": 14,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "17": {
+    "type": "fader",
+    "channel": 15,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "18": {
+    "type": "fader",
+    "channel": 16,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#0044ff",
+    "color_off": "#001022"
+  },
+  "59": {
+    "type": "mode_switch",
+    "target_mode": 3,
+    "color_on": "#ff8000",
+    "color_off": "#482400"
+  },
+  "69": {
+    "type": "mode_switch",
+    "target_mode": 2,
+    "color_on": "#00ff00",
+    "color_off": "#004800"
+  },
+  "79": {
+    "type": "mode_switch",
+    "target_mode": 1,
+    "color_on": "#0000ff",
+    "color_off": "#000048"
+  },
+  "89": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#ff0000",
+    "color_off": "#480000"
+  },
+  "91": {
+    "type": "cc",
+    "channel": 9,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "92": {
+    "type": "cc",
+    "channel": 10,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "93": {
+    "type": "cc",
+    "channel": 11,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "94": {
+    "type": "cc",
+    "channel": 12,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "95": {
+    "type": "cc",
+    "channel": 13,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "96": {
+    "type": "cc",
+    "channel": 14,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "97": {
+    "type": "cc",
+    "channel": 15,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  },
+  "98": {
+    "type": "cc",
+    "channel": 16,
+    "cc": 20,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#ffaa00",
+    "color_off": "#000000"
+  }
+}

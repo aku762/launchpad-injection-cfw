@@ -71,7 +71,7 @@ static const FaderCfg FADERS[N_FADERS] = {
     },
     {
         .anchor_xy  = 94,
-        .length     = 4,
+        .length     = 5,
         .pad_step   = 1,
         .cc         = 0,
         .channel    = 0,
@@ -104,11 +104,13 @@ void mix_test_init() {
         }
         mode_initialized = 1;
     }
-    set_led(89, 0x004800);
+    set_led(59, 0x482400);
+    set_led(69, 0x004800);
+    set_led(79, 0x000048);
+    set_led(89, 0x480000);
     set_led(91, toggle[91] ? 0x4488FF : 0x0A1533);
     set_led(92, 0x0A2211);
     set_led(93, 0x331100);
-    set_led(98, 0x220033);
     for (uint8_t i = 0; i < N_FADERS; i++) update_fader_leds(i, fader_fill[i]);
 }
 
@@ -116,8 +118,17 @@ void mix_test_timer_event() { }
 
 void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     switch (index) {
-        case 89:
+        case 59:
+            if (type) mode_switch(MODE_MIX_TEST);
+            break;
+        case 69:
             if (type) mode_switch(MODE_MEGA_FADERS);
+            break;
+        case 79:
+            if (type) mode_switch(MODE_MIXER2);
+            break;
+        case 89:
+            if (type) mode_switch(MODE_MIXER1);
             break;
         case 91:
             if (type) {
@@ -146,9 +157,6 @@ void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             } else {
                 set_led(93, 0x331100);
             }
-            break;
-        case 98:
-            if (type) mode_switch(MODE_MIXER);
             break;
         case 11:
             if (type) {
@@ -416,25 +424,33 @@ void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             break;
         case 95:
             if (type) {
-                fader_current[4] = 42;
+                fader_current[4] = 31;
                 fader_fill[4] = 1;
                 update_fader_leds(4, 1);
-                send_midi3(0XB0, 0, 42);
+                send_midi3(0XB0, 0, 31);
             }
             break;
         case 96:
             if (type) {
-                fader_current[4] = 84;
+                fader_current[4] = 63;
                 fader_fill[4] = 2;
                 update_fader_leds(4, 2);
-                send_midi3(0XB0, 0, 84);
+                send_midi3(0XB0, 0, 63);
             }
             break;
         case 97:
             if (type) {
-                fader_current[4] = 127;
+                fader_current[4] = 95;
                 fader_fill[4] = 3;
                 update_fader_leds(4, 3);
+                send_midi3(0XB0, 0, 95);
+            }
+            break;
+        case 98:
+            if (type) {
+                fader_current[4] = 127;
+                fader_fill[4] = 4;
+                update_fader_leds(4, 4);
                 send_midi3(0XB0, 0, 127);
             }
             break;

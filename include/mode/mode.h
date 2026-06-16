@@ -20,22 +20,26 @@ extern uint8_t mode;
 // and synced here by tools/sync_modes.py — do not hand-edit between the
 // markers below, your changes will be overwritten on the next sync.
 // BEGIN GENERATED MODES
-#define MODE_MIXER 0
-#include "mode/user/mixer.h"
+#define MODE_MIXER1 0
+#include "mode/user/mixer1.h"
 
-#define MODE_MEGA_FADERS 1
+#define MODE_MIXER2 1
+#include "mode/user/mixer2.h"
+
+#define MODE_MEGA_FADERS 2
 #include "mode/user/mega_faders.h"
 
-#define MODE_MIX_TEST 2
+#define MODE_MIX_TEST 3
 #include "mode/user/mix_test.h"
 
-#define MODE_BOOT 3
+#define MODE_BOOT 4
 #include "mode/system/boot.h"
 
-#define MODE_SETUP 4
+#define MODE_SETUP 5
 #include "mode/system/setup.h"
 
-#define MODES_COUNT 5
+#define MODE_DEFAULT MODE_MIXER1
+#define MODES_COUNT 6
 // END GENERATED MODES
 
 struct Mode {

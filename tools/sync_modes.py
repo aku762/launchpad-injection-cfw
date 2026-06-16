@@ -1,14 +1,27 @@
 #!/usr/bin/env python3
 """
 sync_modes.py - Write the slot assignment from the editor's Modes panel
-(editor/modes.json) into the generated regions of include/mode/mode.h and
-src/mode/mode.c.
+(editor/modes.json) into the generated regions of include/mode/mode.h,
+src/mode/mode.c, and the Makefile's user-mode source list.
 
 Slot numbers are configured by hand in the editor, never inferred from
-existing C/JSON state. This script only rewrites the text between the
-"BEGIN GENERATED MODES" / "END GENERATED MODES" markers in each file -
-everything else (Boot/Setup's actual .c/.h files, mode_switch(), the
-struct Mode definition, the Makefile's SRC list, etc.) is untouched.
+existing C/JSON state. This script only rewrites the text between each
+file's own BEGIN/END marker pair - everything else (Boot/Setup's actual
+.c/.h files, mode_switch(), the struct Mode definition, etc.) is
+untouched.
+
+The Makefile's SRC list only ever compiles src/mode/user/<id>.c for
+modes currently listed in editor/modes.json (via USER_MODE_SRC below).
+A mode removed from modes.json simply stops being compiled - its .c/.h
+pair stays on disk untouched, ready to be re-added (or regenerated from
+its editor/<id>.json layout via json_to_mode.py) if it's ever chosen as
+a mode again.
+
+mode.h also gets a MODE_DEFAULT macro aliased to whichever mode is in
+slot 0. Hand-written files that need a "fall back to something safe"
+mode (mini_boot.c's boot_init, mode.c's mode_switch out-of-range clamp)
+should reference MODE_DEFAULT instead of a literal mode name, so they
+never go stale when slot 0 changes.
 
 Usage:
     python3 tools/sync_modes.py [editor/modes.json]
@@ -20,9 +33,13 @@ import sys
 
 MODE_H = os.path.join('include', 'mode', 'mode.h')
 MODE_C = os.path.join('src', 'mode', 'mode.c')
+MAKEFILE = 'Makefile'
 
 BEGIN_MARKER = 'BEGIN GENERATED MODES'
 END_MARKER = 'END GENERATED MODES'
+
+MAKEFILE_BEGIN_MARKER = 'BEGIN GENERATED MODE SRC'
+MAKEFILE_END_MARKER = 'END GENERATED MODE SRC'
 
 # Boot/Setup are system housekeeping modes, not built in the editor, so they
 # aren't part of editor/modes.json - they're always appended after the
@@ -63,13 +80,13 @@ def full_registry(user_modes):
     return full
 
 
-def replace_block(text, marker_prefix, new_inner_lines, path):
+def replace_block(text, new_inner_lines, path, begin_marker=BEGIN_MARKER, end_marker=END_MARKER):
     lines = text.splitlines(keepends=True)
     begin_idx = end_idx = None
     for i, line in enumerate(lines):
-        if BEGIN_MARKER in line:
+        if begin_marker in line:
             begin_idx = i
-        elif END_MARKER in line:
+        elif end_marker in line:
             end_idx = i
             break
     if begin_idx is None or end_idx is None:
@@ -93,7 +110,16 @@ def gen_mode_h_lines(full):
         lines.append(f"#define MODE_{m['id'].upper()} {m['slot']}")
         lines.append(f'#include "{header}"')
         lines.append('')
+    lines.append(f"#define MODE_DEFAULT MODE_{full[0]['id'].upper()}")
     lines.append(f"#define MODES_COUNT {len(full)}")
+    return lines
+
+
+def gen_makefile_lines(user_modes):
+    lines = ['USER_MODE_SRC=' + ' \\']
+    for i, m in enumerate(user_modes):
+        suffix = '' if i == len(user_modes) - 1 else ' \\'
+        lines.append(f"\tsrc/mode/user/{m['id']}.c{suffix}")
     return lines
 
 
@@ -124,21 +150,30 @@ def main():
 
     with open(MODE_H) as f:
         h_text = f.read()
-    h_text = replace_block(h_text, BEGIN_MARKER, gen_mode_h_lines(full), MODE_H)
+    h_text = replace_block(h_text, gen_mode_h_lines(full), MODE_H)
     with open(MODE_H, 'w') as f:
         f.write(h_text)
 
     with open(MODE_C) as f:
         c_text = f.read()
-    c_text = replace_block(c_text, BEGIN_MARKER, gen_mode_c_lines(full), MODE_C)
+    c_text = replace_block(c_text, gen_mode_c_lines(full), MODE_C)
     with open(MODE_C, 'w') as f:
         f.write(c_text)
+
+    with open(MAKEFILE) as f:
+        mk_text = f.read()
+    mk_text = replace_block(mk_text, gen_makefile_lines(user_modes), MAKEFILE,
+                             begin_marker=MAKEFILE_BEGIN_MARKER, end_marker=MAKEFILE_END_MARKER)
+    with open(MAKEFILE, 'w') as f:
+        f.write(mk_text)
 
     print(f'Synced {len(user_modes)} user mode(s) + Boot/Setup into:')
     print(f'  {MODE_H}')
     print(f'  {MODE_C}')
+    print(f'  {MAKEFILE}')
     for m in full:
         print(f"  slot {m['slot']}: MODE_{m['id'].upper()} ({m['name']})")
+    print(f"  MODE_DEFAULT -> MODE_{full[0]['id'].upper()}")
 
 
 if __name__ == '__main__':

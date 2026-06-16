@@ -10,14 +10,24 @@ uint8_t mode = 0;
 const struct Mode modes[MODES_COUNT] = {
     // BEGIN GENERATED MODES
     {
-        .name = "Mixer",
+        .name = "Mix 1",
         .color = 0x000000,
         .color_dimmed = 0x000000,
-        .init = mixer_init,
-        .timer_event = mixer_timer_event,
-        .surface_event = mixer_surface_event,
-        .midi_event = mixer_midi_event,
-        .aftertouch_event = mixer_aftertouch_event
+        .init = mixer1_init,
+        .timer_event = mixer1_timer_event,
+        .surface_event = mixer1_surface_event,
+        .midi_event = mixer1_midi_event,
+        .aftertouch_event = mixer1_aftertouch_event
+    },
+    {
+        .name = "Mix 2",
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
+        .init = mixer2_init,
+        .timer_event = mixer2_timer_event,
+        .surface_event = mixer2_surface_event,
+        .midi_event = mixer2_midi_event,
+        .aftertouch_event = mixer2_aftertouch_event
     },
     {
         .name = "Mega Faders",
@@ -69,7 +79,7 @@ void mode_switch(uint8_t m) {
     // whatever garbage function pointer that read returns. Clamp to a
     // known-safe mode instead of risking that.
     if (m >= MODES_COUNT) {
-        m = MODE_MIXER;
+        m = MODE_DEFAULT;
     }
 
     uint8_t prev = current_mode;
