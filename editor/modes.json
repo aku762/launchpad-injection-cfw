@@ -12,13 +12,13 @@
     },
     {
       "slot": 2,
-      "name": "Mega Faders",
-      "id": "mega_faders"
+      "name": "Mix Test",
+      "id": "mix_test"
     },
     {
       "slot": 3,
-      "name": "Mix Test",
-      "id": "mix_test"
+      "name": "Mega Faders",
+      "id": "mega_faders"
     }
   ]
 }

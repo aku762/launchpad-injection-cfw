@@ -119,10 +119,10 @@ void mix_test_timer_event() { }
 void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     switch (index) {
         case 59:
-            if (type) mode_switch(MODE_MIX_TEST);
+            if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 69:
-            if (type) mode_switch(MODE_MEGA_FADERS);
+            if (type) mode_switch(MODE_MIX_TEST);
             break;
         case 79:
             if (type) mode_switch(MODE_MIXER2);

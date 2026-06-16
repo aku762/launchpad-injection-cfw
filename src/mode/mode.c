@@ -30,16 +30,6 @@ const struct Mode modes[MODES_COUNT] = {
         .aftertouch_event = mixer2_aftertouch_event
     },
     {
-        .name = "Mega Faders",
-        .color = 0x000000,
-        .color_dimmed = 0x000000,
-        .init = mega_faders_init,
-        .timer_event = mega_faders_timer_event,
-        .surface_event = mega_faders_surface_event,
-        .midi_event = mega_faders_midi_event,
-        .aftertouch_event = mega_faders_aftertouch_event
-    },
-    {
         .name = "Mix Test",
         .color = 0x000000,
         .color_dimmed = 0x000000,
@@ -48,6 +38,16 @@ const struct Mode modes[MODES_COUNT] = {
         .surface_event = mix_test_surface_event,
         .midi_event = mix_test_midi_event,
         .aftertouch_event = mix_test_aftertouch_event
+    },
+    {
+        .name = "Mega Faders",
+        .color = 0x000000,
+        .color_dimmed = 0x000000,
+        .init = mega_faders_init,
+        .timer_event = mega_faders_timer_event,
+        .surface_event = mega_faders_surface_event,
+        .midi_event = mega_faders_midi_event,
+        .aftertouch_event = mega_faders_aftertouch_event
     },
     {
         .name = "Boot",

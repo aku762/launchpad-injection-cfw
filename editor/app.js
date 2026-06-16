@@ -120,12 +120,14 @@ let draggingType = null;
 let draggingFromXy = null;     // anchor xy of pad being dragged (null = sidebar drag)
 let previewOff = false;
 
-// modeRegistry: [{ slot, name, id }] — the user-controlled mapping of slot
-// number -> mode, consumed by tools/sync_modes.py to write mode.h/mode.c.
-// Persisted to localStorage so it survives a page reload without needing to
-// reload modes.json every time.
+// modeRegistry: [{ slot, name, id }] — array order is the source of truth for
+// slot assignment (slot = array index, see reindexSlots), reordered via
+// drag-and-drop in the Modes panel and consumed by tools/sync_modes.py to
+// write mode.h/mode.c. Persisted to localStorage so it survives a page reload
+// without needing to reload modes.json every time.
 const MODE_REGISTRY_KEY = 'lpcfw_mode_registry';
 let modeRegistry = [];
+let dragModeIndex = null;  // index of the mode row currently being dragged, in the Modes panel
 
 // ── Fader helpers ─────────────────────────────────────────────────────────────
 function directionStep(dir) {
@@ -335,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-modes').addEventListener('click', openModesPanel);
   document.getElementById('modes-close').addEventListener('click', closeModesPanel);
   document.getElementById('modes-add').addEventListener('click', () => {
-    modeRegistry.push({ slot: nextFreeSlot(), name: '', id: '' });
+    modeRegistry.push({ slot: modeRegistry.length, name: '', id: '' });
     saveModeRegistry();
     renderModesPanel();
   });
@@ -661,7 +663,7 @@ function renderFaderProps(body, xy, cfg) {
 
 function renderModeSwitchProps(body, xy, cfg) {
   const modeOpts = modeRegistry.length
-    ? modeRegistry.slice().sort((a, b) => a.slot - b.slot).map(m => [m.slot, `${m.slot}: ${m.name || m.id || 'unnamed'}`])
+    ? modeRegistry.map((m, i) => [i, `${i}: ${m.name || m.id || 'unnamed'}`])
     : Array.from({length: 6}, (_, i) => [i, `Mode ${i} (open Modes… to name slots)`]);
   body.appendChild(group('Target Mode', select(modeOpts, cfg.target_mode, v => { state.get(xy).target_mode = parseInt(v); refreshPad(xy); })));
 }
@@ -908,7 +910,9 @@ function refreshFader(xy) {
 // ── Mode registry ────────────────────────────────────────────────────────────
 // This is the only place mode slot assignment is decided. tools/sync_modes.py
 // reads the exported JSON and rewrites the generated regions of mode.h/mode.c
-// to match — slot numbers are never inferred from existing C/JSON state.
+// to match. Slot numbers are never typed in directly — a mode's slot is just
+// its position in modeRegistry, reassigned via drag-and-drop and recomputed
+// by reindexSlots() any time the order changes.
 function slugifyModeId(name) {
   let s = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
   if (!s) s = 'mode';
@@ -929,11 +933,8 @@ function saveModeRegistry() {
   localStorage.setItem(MODE_REGISTRY_KEY, JSON.stringify(modeRegistry));
 }
 
-function nextFreeSlot() {
-  const used = new Set(modeRegistry.map(m => m.slot));
-  let i = 0;
-  while (used.has(i)) i++;
-  return i;
+function reindexSlots() {
+  modeRegistry.forEach((m, i) => { m.slot = i; });
 }
 
 function openModesPanel() {
@@ -961,28 +962,49 @@ function renderModesPanel() {
     body.appendChild(empty);
   }
 
-  modeRegistry
-    .slice()
-    .sort((a, b) => a.slot - b.slot)
-    .forEach(entry => body.appendChild(renderModeRow(entry)));
+  reindexSlots();
+  modeRegistry.forEach((entry, i) => body.appendChild(renderModeRow(entry, i)));
 }
 
-function renderModeRow(entry) {
+function renderModeRow(entry, index) {
   const row = document.createElement('div');
   row.className = 'mode-row';
 
-  const slotInput = document.createElement('input');
-  slotInput.type = 'number';
-  slotInput.min = 0;
-  slotInput.max = 31;
-  slotInput.title = 'Slot number';
-  slotInput.value = entry.slot;
-  slotInput.addEventListener('change', () => {
-    entry.slot = parseInt(slotInput.value) || 0;
+  const handle = document.createElement('span');
+  handle.className = 'mode-row-handle';
+  handle.title = 'Drag to reorder';
+  handle.textContent = '⠿';
+  handle.draggable = true;
+  row.appendChild(handle);
+
+  const slotLabel = document.createElement('span');
+  slotLabel.className = 'mode-row-slot';
+  slotLabel.title = 'Slot number (set by position — drag to reorder)';
+  slotLabel.textContent = index;
+  row.appendChild(slotLabel);
+
+  handle.addEventListener('dragstart', e => {
+    dragModeIndex = index;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    row.classList.add('dragging');
+  });
+  handle.addEventListener('dragend', () => row.classList.remove('dragging'));
+  row.addEventListener('dragover', e => {
+    e.preventDefault();
+    if (dragModeIndex !== null && dragModeIndex !== index) row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+  row.addEventListener('drop', e => {
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    if (dragModeIndex === null || dragModeIndex === index) return;
+    const [moved] = modeRegistry.splice(dragModeIndex, 1);
+    modeRegistry.splice(index, 0, moved);
+    dragModeIndex = null;
     saveModeRegistry();
     renderModesPanel();
   });
-  row.appendChild(slotInput);
 
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -1019,6 +1041,7 @@ function renderModeRow(entry) {
 }
 
 function exportModesJSON() {
+  reindexSlots();
   const blob = new Blob([JSON.stringify({ modes: modeRegistry }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1030,11 +1053,14 @@ function exportModesJSON() {
 
 function loadModesJSON(obj) {
   if (!obj || !Array.isArray(obj.modes)) throw new Error('bad format');
-  modeRegistry = obj.modes.map(m => ({
-    slot: parseInt(m.slot) || 0,
-    name: String(m.name || ''),
-    id: slugifyModeId(String(m.id || m.name || '')),
-  }));
+  modeRegistry = obj.modes
+    .map(m => ({
+      slot: parseInt(m.slot) || 0,
+      name: String(m.name || ''),
+      id: slugifyModeId(String(m.id || m.name || '')),
+    }))
+    .sort((a, b) => a.slot - b.slot);
+  reindexSlots();
   saveModeRegistry();
   renderModesPanel();
   state.forEach((cfg, xy) => { if (cfg.type === 'mode_switch') refreshPad(xy); });

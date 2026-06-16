@@ -16,10 +16,16 @@ End-to-end, a layout goes from "drawn in a browser" to "flashable file" in seven
 3. **`tools/json_to_mode.py <layout>.json <id>`** — transforms one layout JSON into real C: `src/mode/user/<id>.c` + `include/mode/user/<id>.h`. Resolves any `mode_switch` buttons in that layout against whatever's currently registered in `mode.h` — which is why this runs after step 2, not before.
 4. **`make mini`** — a real `arm-none-eabi-gcc`/`ld` compile-and-link of all the C (your generated modes plus the hand-written firmware glue — `app.c`, drivers, LED code, `mode.c`, etc.), placed at specific flash addresses via `linker/stm32f401_lpmini.ld`. The linker also pulls in two binary blobs (`blob_part1.o`/`blob_part2.o`) — literal byte-slices of the extracted *original* Novation firmware, split around the gap your code goes into. The output (`fw.elf`/`fw.bin`) is one continuous image — original-firmware-bytes, then your compiled code, then more original-firmware-bytes — not yet hooked together, just sitting adjacent in flash.
 5. **`tools/patcher.py` + `patches/lpmini.json`** — the actual "injection": rewrites specific call instructions inside that merged binary (`app_tick_hook`, `midi_register_hook`) so the original firmware's existing code jumps into your new code. Output: `fw.patched.bin`.
-6. **`tools/syxtool.py`** — wraps `fw.patched.bin` in Novation's SysEx update envelope → `build/mini-cfw.syx`, the file you actually flash to the device.
-7. **`tools/bipa.py`** (side artifact) — produces `build/mini-cfw.bipa`, a binary-diff format against the original, used for distribution rather than flashing.
+6. **`tools/syxtool.py`** — wraps `fw.patched.bin` in Novation's SysEx update envelope → `build/splicewerk-minimk3-cfw.syx`, the file you actually flash to the device.
+7. **`tools/bipa.py`** (side artifact) — produces `build/splicewerk-minimk3-cfw.bipa`, a binary-diff format against the original, used for distribution rather than flashing.
 
-`make mini` runs steps 4-7 in one shot; steps 1-3 are manual (editor export + the two Python scripts) and only need re-running for whatever you actually changed.
+`make mini` runs steps 4-7 in one shot. Step 1 (the editor itself) is always manual. Steps 2-3-4 — sync the registry, regenerate every registered mode's C, then build — are wrapped up in one command:
+
+```bash
+python3 tools/build.py
+```
+
+It reads `editor/modes.json`, runs `sync_modes.py`, regenerates `src/mode/user/<id>.c` for every registered mode from its `editor/<id>.json` layout (in the right order, so `mode_switch` targets always resolve against the freshly-synced registry), then runs `make mini`. Pass `--clean` to run `make clean` first. Run this any time you've changed `modes.json` or any layout JSON and just want a fresh `.syx` without thinking about step order.
 
 ## How the injection works
 
@@ -73,7 +79,7 @@ Outputs `src/mode/user/my_mode.c` and `include/mode/user/my_mode.h`. If the layo
 
 ### Mode Registry (`editor/modes.json` + `tools/sync_modes.py`)
 
-Slot assignment — which mode lives in slot 0, 1, 2, etc. — is configured in one place: the editor's **Modes…** panel (toolbar button in `editor/index.html`). Add a row per mode with its display name and an `id` matching the name you pass to `json_to_mode.py`, and a slot number. This is deliberately a manual, user-controlled mapping, not something inferred from existing C or JSON state — the panel is the single source of truth.
+Slot assignment — which mode lives in slot 0, 1, 2, etc. — is configured in one place: the editor's **Modes…** panel (toolbar button in `editor/index.html`). Add a row per mode with its display name and an `id` matching the name you pass to `json_to_mode.py`; the slot number itself isn't typed in — it's just the row's position in the list, dragged into place via the handle on the left. This is deliberately a manual, user-controlled mapping, not something inferred from existing C or JSON state — the panel is the single source of truth.
 
 Export the registry (Export modes.json) over `editor/modes.json`, then sync it into the firmware:
 
@@ -132,22 +138,16 @@ You need to supply the original firmware yourself (Novation does not allow redis
 
 1. Download `launchpadminimk3-firmware-407.syx` from the official Novation updater.
 2. Place it at `original/launchpadminimk3-firmware-407.syx`.
-3. Run `make mini`. The patched firmware is written to `build/mini-cfw.syx`.
-4. Send `build/mini-cfw.syx` to the device via any SysEx tool (MIDI-OX, SysEx Librarian, Novation Components, etc.).
+3. Run `python3 tools/build.py`. The patched firmware is written to `build/splicewerk-minimk3-cfw.syx`.
+4. Send `build/splicewerk-minimk3-cfw.syx` to the device via any SysEx tool (MIDI-OX, SysEx Librarian, Novation Components, etc.).
 
-To rebuild after editing a layout JSON:
-
-```bash
-python3 tools/json_to_mode.py editor/mega_faders.json mega_faders
-make mini
-```
+To rebuild after editing a layout JSON or reordering `modes.json`, just run `python3 tools/build.py` again — see Pipeline overview above for what it does under the hood. `make mini` on its own still works if you've already synced/regenerated everything by hand and just want the compile/patch/package steps.
 
 ## Adding a new mode
 
-1. Open `editor/index.html`, click **Modes…**, and add a row for the new mode — pick a free slot, a display name, and an `id` (this is the name you'll pass to the generator in step 3). Export modes.json over `editor/modes.json`.
-2. Sync the registry into the firmware: `python3 tools/sync_modes.py editor/modes.json` — this rewrites the generated regions of `include/mode/mode.h`, `src/mode/mode.c`, and the Makefile's `USER_MODE_SRC` for you, so `your_id.c` is now part of the build.
-3. Design the layout in the editor and export it as `.json` into `editor/`. Run the generator: `python3 tools/json_to_mode.py editor/your_layout.json your_id` (use the same `id` from step 1). Any `mode_switch` widgets in the layout resolve automatically against the now-synced `mode.h`.
-4. `make mini`
+1. Open `editor/index.html`, click **Modes…**, and add a row for the new mode — pick a display name and an `id` (this is the name you'll pass to the generator). Drag it into place if you care where its slot ends up. Export modes.json over `editor/modes.json`.
+2. Design the layout in the editor and export it as `editor/your_id.json` (matching the `id` from step 1).
+3. Run `python3 tools/build.py` — it syncs the registry, generates `src/mode/user/your_id.c` from the layout, and builds.
 
 ## Repository layout (Mini-relevant parts)
 

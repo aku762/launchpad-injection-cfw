@@ -20,6 +20,7 @@ VERSION=407
 SYSEX_TYPE=/minimk3
 PATCHES_FILE=patches/lpmini.json
 BUILD_METHOD=standard
+OUTPUT_NAME=splicewerk-minimk3-cfw
 
 ORIG_FW_SYX=original/launchpadminimk3-firmware-$(VERSION).syx
 ORIG_FW_BIN=original/launchpadminimk3-firmware-$(VERSION).bin
@@ -36,8 +37,8 @@ OFF_AFTER_FREE_END=$(shell printf %d $$(( $(MINI_FREE_END) - $(MINI_BASE) + 1 ))
 USER_MODE_SRC= \
 	src/mode/user/mixer1.c \
 	src/mode/user/mixer2.c \
-	src/mode/user/mega_faders.c \
-	src/mode/user/mix_test.c
+	src/mode/user/mix_test.c \
+	src/mode/user/mega_faders.c
 # END GENERATED MODE SRC
 
 SRC=$(DRIVER_SRC) \
@@ -110,14 +111,14 @@ $(BUILD_DIR)/fw.patched.bin: $(BUILD_DIR)/fw.elf $(BUILD_DIR)/fw.bin $(SCRIPTS_D
 
 $(BUILD_DIR)/fw.patched.syx: $(BUILD_DIR)/fw.patched.bin $(SCRIPTS_DIR)/syxtool.py
 	@python3 $(SCRIPTS_DIR)/syxtool.py --to-syx $(SYSEX_TYPE) $(VERSION) $(BUILD_DIR)/fw.patched.bin $(BUILD_DIR)/cfw.syx
-	@cp $(BUILD_DIR)/cfw.syx build/$(DEVICE)-cfw.syx
-	@echo "Created build/$(DEVICE)-cfw.syx"
+	@cp $(BUILD_DIR)/cfw.syx build/$(OUTPUT_NAME).syx
+	@echo "Created build/$(OUTPUT_NAME).syx"
 
 $(BUILD_DIR)/fw.patched.bin.bipa: $(SCRIPTS_DIR)/bipa.py $(ORIG_FW_BIN) $(BUILD_DIR)/fw.patched.bin
 	@echo "Creating BIPA patch for Mini (source=$(ORIG_FW_BIN))"
 	python3 $(SCRIPTS_DIR)/bipa.py create --source $(ORIG_FW_BIN) --target $(BUILD_DIR)/fw.patched.bin
-	@cp $@ build/$(DEVICE)-cfw.bipa
-	@echo "Created build/$(DEVICE)-cfw.bipa"
+	@cp $@ build/$(OUTPUT_NAME).bipa
+	@echo "Created build/$(OUTPUT_NAME).bipa"
 
 original/%.bin: original/%.syx $(SCRIPTS_DIR)/syxtool.py
 	@echo "Converting $< to $@ via syxtool..."

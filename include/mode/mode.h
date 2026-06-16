@@ -26,11 +26,11 @@ extern uint8_t mode;
 #define MODE_MIXER2 1
 #include "mode/user/mixer2.h"
 
-#define MODE_MEGA_FADERS 2
-#include "mode/user/mega_faders.h"
-
-#define MODE_MIX_TEST 3
+#define MODE_MIX_TEST 2
 #include "mode/user/mix_test.h"
+
+#define MODE_MEGA_FADERS 3
+#include "mode/user/mega_faders.h"
 
 #define MODE_BOOT 4
 #include "mode/system/boot.h"
