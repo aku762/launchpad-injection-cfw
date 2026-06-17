@@ -385,30 +385,33 @@ def generate(layout, name):
             c.append(line)
 
     if has_faders:
-        pad_cases = {}
-        for f in faders:
-            for i, pad_xy in enumerate(f['throw_pads']):
-                pad_cases[pad_xy] = (f, i)
-
-        for xy in sorted(pad_cases):
-            f, throw_pos = pad_cases[xy]
-            fi  = f['idx']
-            s   = 0xB0 | f['channel']
-            cc  = f['cc']
-            val = f['values'][throw_pos]
-
-            c.append(f'        case {xy}:')
-            c.append(f'            if (type) {{')
-            c += [
-                f'                fader_current[{fi}] = {val};',
-                f'                fader_fill[{fi}] = {throw_pos};',
-                f'                update_fader_leds({fi}, {throw_pos});',
-                f'                {send(s, cc, val)}',
-            ]
-            c.append(f'            }}')
-            c.append(f'            break;')
-
-    c.append('        default: break;')
+        c.append('        default:')
+        c.append('            if (type) {')
+        c.append('                for (uint8_t fi = 0; fi < N_FADERS; fi++) {')
+        c.append('                    const FaderCfg *f = &FADERS[fi];')
+        c.append('                    int16_t delta = (int16_t)index - (int16_t)f->anchor_xy;')
+        c.append('                    int8_t  step  = f->pad_step;')
+        c.append('                    uint8_t throw_pos;')
+        c.append('                    if (step > 0) {')
+        c.append('                        if (delta < 0 || delta >= (int16_t)f->length * step || delta % step != 0) continue;')
+        c.append('                        throw_pos = (uint8_t)(delta / step);')
+        c.append('                    } else {')
+        c.append('                        if (delta > 0 || delta <= (int16_t)f->length * step || (-delta) % (-step) != 0) continue;')
+        c.append('                        throw_pos = (uint8_t)((-delta) / (-step));')
+        c.append('                    }')
+        c.append('                    uint8_t val = (throw_pos == 0) ? f->min_value :')
+        c.append('                                  (throw_pos >= f->length - 1u) ? f->max_value :')
+        c.append('                                  (uint8_t)(f->min_value + throw_pos * (f->max_value - f->min_value) / (f->length - 1u));')
+        c.append('                    fader_current[fi] = val;')
+        c.append('                    fader_fill[fi]    = throw_pos;')
+        c.append('                    update_fader_leds(fi, throw_pos);')
+        c.append('                    send_midi3((uint8_t)(0xB0 | f->channel), f->cc, val);')
+        c.append('                    return;')
+        c.append('                }')
+        c.append('            }')
+        c.append('            break;')
+    else:
+        c.append('        default: break;')
     c.append('    }')
     # Suppress unused warning when no note momentary/trigger buttons present
     uses_value = any(
