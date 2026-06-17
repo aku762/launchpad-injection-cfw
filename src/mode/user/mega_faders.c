@@ -153,8 +153,8 @@ void mega_faders_init() {
     set_led(13, toggle[13] ? 0xE039E0 : 0x220022);
     set_led(14, toggle[14] ? 0xE039E0 : 0x220022);
     set_led(19, 0x1A1A00);
-    set_led(59, 0x331100);
-    set_led(69, 0x331100);
+    set_led(59, 0xFF8000);
+    set_led(69, 0xB7FFB7);
     set_led(71, 0x041533);
     set_led(72, 0x041533);
     set_led(73, 0x041533);
@@ -163,7 +163,7 @@ void mega_faders_init() {
     set_led(76, 0x041533);
     set_led(77, 0x041533);
     set_led(78, 0x041533);
-    set_led(79, toggle[79] ? 0x04FF89 : 0x0A2211);
+    set_led(79, 0xB7B7FF);
     set_led(81, 0x0A1533);
     set_led(82, 0x0A1533);
     set_led(83, 0x0A1533);
@@ -172,11 +172,11 @@ void mega_faders_init() {
     set_led(86, 0x0A1533);
     set_led(87, 0x0A1533);
     set_led(88, 0x0A1533);
-    set_led(89, toggle[89] ? 0x04FF89 : 0x0A2211);
-    set_led(95, 0x220033);
-    set_led(96, 0x220033);
-    set_led(97, 0x220033);
-    set_led(98, 0x220033);
+    set_led(89, 0xFF7A7A);
+    set_led(91, toggle[91] ? 0x04FF89 : 0x0A2211);
+    set_led(92, toggle[92] ? 0x04FF89 : 0x0A2211);
+    set_led(93, 0x331100);
+    set_led(94, 0x331100);
     for (uint8_t i = 0; i < N_FADERS; i++) update_fader_leds(i, fader_fill[i]);
 }
 
@@ -242,20 +242,10 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             }
             break;
         case 59:
-            if (type) {
-                send_midi3(0XC0, 1, 0);
-                set_led(59, 0xFF6633);
-            } else {
-                set_led(59, 0x331100);
-            }
+            if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 69:
-            if (type) {
-                send_midi3(0XC0, 0, 0);
-                set_led(69, 0xFF6633);
-            } else {
-                set_led(69, 0x331100);
-            }
+            if (type) mode_switch(MODE_MIX_TEST);
             break;
         case 71:
             if (type) {
@@ -330,16 +320,7 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             }
             break;
         case 79:
-            if (type) {
-                toggle[79] ^= 1;
-                if (toggle[79]) {
-                    send_midi3(0XB0, 65, 127);
-                    set_led(79, 0x04FF89);
-                } else {
-                    send_midi3(0XB0, 65, 0);
-                    set_led(79, 0x0A2211);
-                }
-            }
+            if (type) mode_switch(MODE_MIXER2);
             break;
         case 81:
             if (type) {
@@ -414,28 +395,47 @@ void mega_faders_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             }
             break;
         case 89:
+            if (type) mode_switch(MODE_MIXER1);
+            break;
+        case 91:
             if (type) {
-                toggle[89] ^= 1;
-                if (toggle[89]) {
+                toggle[91] ^= 1;
+                if (toggle[91]) {
                     send_midi3(0XB0, 64, 127);
-                    set_led(89, 0x04FF89);
+                    set_led(91, 0x04FF89);
                 } else {
                     send_midi3(0XB0, 64, 0);
-                    set_led(89, 0x0A2211);
+                    set_led(91, 0x0A2211);
                 }
             }
             break;
-        case 95:
-            if (type) mode_switch(MODE_MIXER1);
+        case 92:
+            if (type) {
+                toggle[92] ^= 1;
+                if (toggle[92]) {
+                    send_midi3(0XB0, 65, 127);
+                    set_led(92, 0x04FF89);
+                } else {
+                    send_midi3(0XB0, 65, 0);
+                    set_led(92, 0x0A2211);
+                }
+            }
             break;
-        case 96:
-            if (type) mode_switch(MODE_MIXER2);
+        case 93:
+            if (type) {
+                send_midi3(0XC0, 0, 0);
+                set_led(93, 0xFF6633);
+            } else {
+                set_led(93, 0x331100);
+            }
             break;
-        case 97:
-            if (type) mode_switch(MODE_MIX_TEST);
-            break;
-        case 98:
-            if (type) mode_switch(MODE_MEGA_FADERS);
+        case 94:
+            if (type) {
+                send_midi3(0XC0, 1, 0);
+                set_led(94, 0xFF6633);
+            } else {
+                set_led(94, 0x331100);
+            }
             break;
         case 21:
             if (type) {

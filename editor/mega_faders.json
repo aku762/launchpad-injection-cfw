@@ -158,18 +158,16 @@
     "color_off": "#ffb7b7"
   },
   "59": {
-    "type": "pc",
-    "channel": 1,
-    "program": 1,
-    "color_on": "#ff6633",
-    "color_off": "#331100"
+    "type": "mode_switch",
+    "target_mode": 3,
+    "color_on": "#ff8000",
+    "color_off": "#ff8000"
   },
   "69": {
-    "type": "pc",
-    "channel": 1,
-    "program": 0,
-    "color_on": "#ff6633",
-    "color_off": "#331100"
+    "type": "mode_switch",
+    "target_mode": 2,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
   },
   "71": {
     "type": "note",
@@ -236,14 +234,10 @@
     "color_off": "#041533"
   },
   "79": {
-    "type": "cc",
-    "channel": 1,
-    "cc": 65,
-    "value_on": 127,
-    "value_off": 0,
-    "behavior": "toggle",
-    "color_on": "#04ff89",
-    "color_off": "#0a2211"
+    "type": "mode_switch",
+    "target_mode": 1,
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
   },
   "81": {
     "type": "note",
@@ -310,6 +304,12 @@
     "color_off": "#0a1533"
   },
   "89": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#ff0000",
+    "color_off": "#ff7a7a"
+  },
+  "91": {
     "type": "cc",
     "channel": 1,
     "cc": 64,
@@ -319,28 +319,28 @@
     "color_on": "#04ff89",
     "color_off": "#0a2211"
   },
-  "95": {
-    "type": "mode_switch",
-    "target_mode": 0,
-    "color_on": "#cc44ff",
-    "color_off": "#220033"
+  "92": {
+    "type": "cc",
+    "channel": 1,
+    "cc": 65,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#04ff89",
+    "color_off": "#0a2211"
   },
-  "96": {
-    "type": "mode_switch",
-    "target_mode": 1,
-    "color_on": "#cc44ff",
-    "color_off": "#220033"
+  "93": {
+    "type": "pc",
+    "channel": 1,
+    "program": 0,
+    "color_on": "#ff6633",
+    "color_off": "#331100"
   },
-  "97": {
-    "type": "mode_switch",
-    "target_mode": 2,
-    "color_on": "#cc44ff",
-    "color_off": "#220033"
-  },
-  "98": {
-    "type": "mode_switch",
-    "target_mode": 3,
-    "color_on": "#cc44ff",
-    "color_off": "#220033"
+  "94": {
+    "type": "pc",
+    "channel": 1,
+    "program": 1,
+    "color_on": "#ff6633",
+    "color_off": "#331100"
   }
 }

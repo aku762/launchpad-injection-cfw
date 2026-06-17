@@ -104,10 +104,10 @@ void mix_test_init() {
         }
         mode_initialized = 1;
     }
-    set_led(59, 0x482400);
-    set_led(69, 0x004800);
-    set_led(79, 0x000048);
-    set_led(89, 0x480000);
+    set_led(59, 0xFFDBB7);
+    set_led(69, 0x00FF00);
+    set_led(79, 0xB7B7FF);
+    set_led(89, 0xFFB7B7);
     set_led(91, toggle[91] ? 0x4488FF : 0x0A1533);
     set_led(92, 0x0A2211);
     set_led(93, 0x331100);

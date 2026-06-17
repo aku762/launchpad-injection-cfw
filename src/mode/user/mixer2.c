@@ -33,8 +33,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 8,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0x00FF00,
+        .color_off  = 0xB7FFB7,
     },
     {
         .anchor_xy  = 12,
@@ -44,8 +44,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 9,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0x00FF00,
+        .color_off  = 0xB7FFB7,
     },
     {
         .anchor_xy  = 13,
@@ -55,8 +55,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 10,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0x00FF00,
+        .color_off  = 0xB7FFB7,
     },
     {
         .anchor_xy  = 14,
@@ -66,8 +66,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 11,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0x00FF00,
+        .color_off  = 0xB7FFB7,
     },
     {
         .anchor_xy  = 15,
@@ -77,8 +77,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 12,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0xFF8000,
+        .color_off  = 0xFFDBB7,
     },
     {
         .anchor_xy  = 16,
@@ -88,8 +88,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 13,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0xFF8000,
+        .color_off  = 0xFFDBB7,
     },
     {
         .anchor_xy  = 17,
@@ -99,8 +99,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 14,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0xFF8000,
+        .color_off  = 0xFFDBB7,
     },
     {
         .anchor_xy  = 18,
@@ -110,8 +110,8 @@ static const FaderCfg FADERS[N_FADERS] = {
         .channel    = 15,
         .min_value  = 0,
         .max_value  = 127,
-        .color_on   = 0x0044FF,
-        .color_off  = 0x001022,
+        .color_on   = 0xFF8000,
+        .color_off  = 0xFFDBB7,
     },
 };
 
@@ -137,10 +137,10 @@ void mixer2_init() {
         }
         mode_initialized = 1;
     }
-    set_led(59, 0x482400);
-    set_led(69, 0x004800);
-    set_led(79, 0x000048);
-    set_led(89, 0x480000);
+    set_led(59, 0xFFDBB7);
+    set_led(69, 0xB7FFB7);
+    set_led(79, 0x0000FF);
+    set_led(89, 0xFFB7B7);
     set_led(91, toggle[91] ? 0xFFAA00 : 0x000000);
     set_led(92, toggle[92] ? 0xFFAA00 : 0x000000);
     set_led(93, toggle[93] ? 0xFFAA00 : 0x000000);

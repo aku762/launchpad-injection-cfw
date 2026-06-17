@@ -27,19 +27,19 @@
     "type": "mode_switch",
     "target_mode": 3,
     "color_on": "#ff8000",
-    "color_off": "#482400"
+    "color_off": "#ffdbb7"
   },
   "69": {
     "type": "mode_switch",
     "target_mode": 2,
     "color_on": "#00ff00",
-    "color_off": "#004800"
+    "color_off": "#00ff00"
   },
   "79": {
     "type": "mode_switch",
     "target_mode": 1,
     "color_on": "#0000ff",
-    "color_off": "#000048"
+    "color_off": "#b7b7ff"
   },
   "85": {
     "type": "fader",
@@ -69,7 +69,7 @@
     "type": "mode_switch",
     "target_mode": 0,
     "color_on": "#ff0000",
-    "color_off": "#480000"
+    "color_off": "#ffb7b7"
   },
   "91": {
     "type": "note",

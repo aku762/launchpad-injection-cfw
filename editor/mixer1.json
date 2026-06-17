@@ -8,8 +8,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
   },
   "12": {
     "type": "fader",
@@ -20,8 +20,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
   },
   "13": {
     "type": "fader",
@@ -32,8 +32,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
   },
   "14": {
     "type": "fader",
@@ -44,8 +44,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
   },
   "15": {
     "type": "fader",
@@ -56,8 +56,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
   },
   "16": {
     "type": "fader",
@@ -68,8 +68,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
   },
   "17": {
     "type": "fader",
@@ -80,8 +80,8 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
   },
   "18": {
     "type": "fader",
@@ -92,32 +92,32 @@
     "min_value": 0,
     "max_value": 127,
     "curve_mode": false,
-    "color_on": "#0044ff",
-    "color_off": "#001022"
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
   },
   "59": {
     "type": "mode_switch",
     "target_mode": 3,
     "color_on": "#ff8000",
-    "color_off": "#482400"
+    "color_off": "#ffdbb7"
   },
   "69": {
     "type": "mode_switch",
     "target_mode": 2,
     "color_on": "#00ff00",
-    "color_off": "#004800"
+    "color_off": "#b7ffb7"
   },
   "79": {
     "type": "mode_switch",
     "target_mode": 1,
     "color_on": "#0000ff",
-    "color_off": "#000048"
+    "color_off": "#b7b7ff"
   },
   "89": {
     "type": "mode_switch",
     "target_mode": 0,
     "color_on": "#ff0000",
-    "color_off": "#480000"
+    "color_off": "#ff0000"
   },
   "91": {
     "type": "cc",
