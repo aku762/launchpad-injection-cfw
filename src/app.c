@@ -3,6 +3,7 @@
 #include "mode/mode.h"
 #include "flash/flash.h"
 #include "utils/sysex.h"
+#include "utils/cc_state.h"
 #include "driver/driver.h"
 
 uint8_t setup_button_down = 0;
@@ -12,6 +13,7 @@ void app_init() {
     setup_button_down = 0;
     setup_button_tick = 0;
 
+    cc_state_init();
     flash_read();
 
     mode_switch(MODE_BOOT);

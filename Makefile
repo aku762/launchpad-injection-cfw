@@ -37,7 +37,7 @@ OFF_AFTER_FREE_END=$(shell printf %d $$(( $(MINI_FREE_END) - $(MINI_BASE) + 1 ))
 USER_MODE_SRC= \
 	src/mode/user/mixer1.c \
 	src/mode/user/mixer2.c \
-	src/mode/user/mix_test.c \
+	src/mode/user/d_fade.c \
 	src/mode/user/mega_faders.c
 # END GENERATED MODE SRC
 
@@ -47,6 +47,7 @@ SRC=$(DRIVER_SRC) \
 	src/utils/conversion.c \
 	src/utils/palette.c \
 	src/utils/sysex.c \
+	src/utils/cc_state.c \
 	src/flash/settings.c \
 	src/flash/flash.c \
 	src/mode/mode.c \

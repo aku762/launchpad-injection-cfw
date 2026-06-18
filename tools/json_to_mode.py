@@ -288,6 +288,8 @@ def generate(layout, name):
     c.append(f'#include <mode/mode.h>')
     c.append(f'#include <led/led.h>')
     c.append(f'#include <driver/driver.h>')
+    if has_faders:
+        c.append(f'#include <utils/cc_state.h>')
     c.append('')
 
     c.append('static void send_midi3(uint8_t status, uint8_t d1, uint8_t d2) {')
@@ -342,6 +344,7 @@ def generate(layout, name):
         c.append('        if (f->channel != channel || f->cc != cc) continue;')
         c.append('        fader_current[fi] = value;')
         c.append('        fader_activated |= (1u << fi);')
+        c.append('        cc_state_set(channel, cc, value);')
         c.append('        if (value < f->min_value) {')
         c.append('            fader_fill[fi] = 0;')
         c.append('            for (uint8_t i = 0; i < f->length; i++)')
@@ -398,7 +401,10 @@ def generate(layout, name):
             c.append(f'    set_led({xy}, {hex_c(b.get("color_off", "#000000"))});')
     if has_faders:
         c.append('    for (uint8_t i = 0; i < N_FADERS; i++) {')
-        c.append('        if (fader_activated & (1u << i)) {')
+        c.append('        uint8_t gv = cc_state_get(FADERS[i].channel, FADERS[i].cc);')
+        c.append('        if (gv != 0xFF) {')
+        c.append('            handle_fader_cc(FADERS[i].channel, FADERS[i].cc, gv);')
+        c.append('        } else if (fader_activated & (1u << i)) {')
         c.append('            update_fader_leds(i, fader_fill[i]);')
         c.append('        } else {')
         c.append('            const FaderCfg *f = &FADERS[i];')

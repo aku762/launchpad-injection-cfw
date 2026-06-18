@@ -3,6 +3,7 @@
 #include <mode/mode.h>
 #include <led/led.h>
 #include <driver/driver.h>
+#include <utils/cc_state.h>
 
 static void send_midi3(uint8_t status, uint8_t d1, uint8_t d2) {
     uint8_t buf[3] = { status, d1, d2 };
@@ -133,6 +134,7 @@ static void handle_fader_cc(uint8_t channel, uint8_t cc, uint8_t value) {
         if (f->channel != channel || f->cc != cc) continue;
         fader_current[fi] = value;
         fader_activated |= (1u << fi);
+        cc_state_set(channel, cc, value);
         if (value < f->min_value) {
             fader_fill[fi] = 0;
             for (uint8_t i = 0; i < f->length; i++)
@@ -179,7 +181,10 @@ void mixer1_init() {
     set_led(97, toggle[97] ? 0xFFAA00 : 0x000000);
     set_led(98, toggle[98] ? 0xFFAA00 : 0x000000);
     for (uint8_t i = 0; i < N_FADERS; i++) {
-        if (fader_activated & (1u << i)) {
+        uint8_t gv = cc_state_get(FADERS[i].channel, FADERS[i].cc);
+        if (gv != 0xFF) {
+            handle_fader_cc(FADERS[i].channel, FADERS[i].cc, gv);
+        } else if (fader_activated & (1u << i)) {
             update_fader_leds(i, fader_fill[i]);
         } else {
             const FaderCfg *f = &FADERS[i];
