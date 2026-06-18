@@ -329,11 +329,40 @@ def generate(layout, name):
         # mutable runtime state — explicitly set in init(), no .data init needed.
         # Must live in .cfw_bss, not plain .bss (see toggle[] comment above).
         c.append(f'__attribute__((section(".cfw_bss"))) static uint8_t fader_current[N_FADERS];')
-        # last throw position per fader, so re-entering the mode can redraw
-        # LEDs from where the fader actually is instead of recomputing it
         c.append(f'__attribute__((section(".cfw_bss"))) static uint8_t fader_fill[N_FADERS];')
+        # bitfield: bit i set once fader i has received its first CC (via touch or external MIDI).
+        # uint32_t supports up to 32 faders.
+        c.append(f'__attribute__((section(".cfw_bss"))) static uint32_t fader_activated;')
         c.append('')
         c += gen_update_fader_leds()
+        c.append('')
+        c.append('static void handle_fader_cc(uint8_t channel, uint8_t cc, uint8_t value) {')
+        c.append('    for (uint8_t fi = 0; fi < N_FADERS; fi++) {')
+        c.append('        const FaderCfg *f = &FADERS[fi];')
+        c.append('        if (f->channel != channel || f->cc != cc) continue;')
+        c.append('        fader_current[fi] = value;')
+        c.append('        fader_activated |= (1u << fi);')
+        c.append('        if (value < f->min_value) {')
+        c.append('            fader_fill[fi] = 0;')
+        c.append('            for (uint8_t i = 0; i < f->length; i++)')
+        c.append('                set_led((uint8_t)((int)f->anchor_xy + i * f->pad_step), f->color_off);')
+        c.append('        } else if (value >= f->max_value) {')
+        c.append('            fader_fill[fi] = (uint8_t)(f->length - 1u);')
+        c.append('            update_fader_leds(fi, (uint8_t)(f->length - 1u));')
+        c.append('        } else {')
+        c.append('            uint8_t best = 0, best_diff = 255;')
+        c.append('            for (uint8_t t = 0; t < f->length; t++) {')
+        c.append('                uint8_t cv = (t == 0) ? f->min_value :')
+        c.append('                             (t >= f->length - 1u) ? f->max_value :')
+        c.append('                             (uint8_t)(f->min_value + t * (f->max_value - f->min_value) / (f->length - 1u));')
+        c.append('                uint8_t diff = (value >= cv) ? (value - cv) : (cv - value);')
+        c.append('                if (diff < best_diff) { best_diff = diff; best = t; }')
+        c.append('            }')
+        c.append('            fader_fill[fi] = best;')
+        c.append('            update_fader_leds(fi, best);')
+        c.append('        }')
+        c.append('    }')
+        c.append('}')
         c.append('')
 
     # ── init ────────────────────────────────────────────────────────────────
@@ -355,8 +384,8 @@ def generate(layout, name):
             c.append('        for (uint8_t i = 0; i < N_FADERS; i++) {')
             c.append('            fader_current[i] = FADERS[i].min_value;')
             c.append('            fader_fill[i] = 0;')
-            c.append('            send_midi3((uint8_t)(0xB0 | FADERS[i].channel), FADERS[i].cc, FADERS[i].min_value);')
             c.append('        }')
+            c.append('        fader_activated = 0;')
         c.append('        mode_initialized = 1;')
         c.append('    }')
     for xy_str, b in sorted_non_fader:
@@ -368,7 +397,15 @@ def generate(layout, name):
         else:
             c.append(f'    set_led({xy}, {hex_c(b.get("color_off", "#000000"))});')
     if has_faders:
-        c.append('    for (uint8_t i = 0; i < N_FADERS; i++) update_fader_leds(i, fader_fill[i]);')
+        c.append('    for (uint8_t i = 0; i < N_FADERS; i++) {')
+        c.append('        if (fader_activated & (1u << i)) {')
+        c.append('            update_fader_leds(i, fader_fill[i]);')
+        c.append('        } else {')
+        c.append('            const FaderCfg *f = &FADERS[i];')
+        c.append('            for (uint8_t j = 0; j < f->length; j++)')
+        c.append('                set_led((uint8_t)((int)f->anchor_xy + j * f->pad_step), f->color_off);')
+        c.append('        }')
+        c.append('    }')
     c.append('}')
     c.append('')
 
@@ -402,9 +439,7 @@ def generate(layout, name):
         c.append('                    uint8_t val = (throw_pos == 0) ? f->min_value :')
         c.append('                                  (throw_pos >= f->length - 1u) ? f->max_value :')
         c.append('                                  (uint8_t)(f->min_value + throw_pos * (f->max_value - f->min_value) / (f->length - 1u));')
-        c.append('                    fader_current[fi] = val;')
-        c.append('                    fader_fill[fi]    = throw_pos;')
-        c.append('                    update_fader_leds(fi, throw_pos);')
+        c.append('                    handle_fader_cc(f->channel, f->cc, val);')
         c.append('                    send_midi3((uint8_t)(0xB0 | f->channel), f->cc, val);')
         c.append('                    return;')
         c.append('                }')
@@ -425,7 +460,12 @@ def generate(layout, name):
 
     # ── midi_event ───────────────────────────────────────────────────────────
     c.append(f'void {name}_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) {{')
-    c.append('    (void)port; (void)status; (void)d1; (void)d2;')
+    c.append('    (void)port;')
+    if has_faders:
+        c.append('    if ((status & 0xF0) == 0xB0)')
+        c.append('        handle_fader_cc((uint8_t)(status & 0x0F), d1, d2);')
+    else:
+        c.append('    (void)status; (void)d1; (void)d2;')
     c.append('}')
     c.append('')
 

@@ -84,12 +84,41 @@ static const FaderCfg FADERS[N_FADERS] = {
 
 __attribute__((section(".cfw_bss"))) static uint8_t fader_current[N_FADERS];
 __attribute__((section(".cfw_bss"))) static uint8_t fader_fill[N_FADERS];
+__attribute__((section(".cfw_bss"))) static uint32_t fader_activated;
 
 static void update_fader_leds(uint8_t fi, uint8_t fill) {
     const FaderCfg *f = &FADERS[fi];
     for (uint8_t i = 0; i < f->length; i++) {
         uint8_t pad = (uint8_t)((int)f->anchor_xy + i * f->pad_step);
         set_led(pad, (i <= fill) ? f->color_on : f->color_off);
+    }
+}
+
+static void handle_fader_cc(uint8_t channel, uint8_t cc, uint8_t value) {
+    for (uint8_t fi = 0; fi < N_FADERS; fi++) {
+        const FaderCfg *f = &FADERS[fi];
+        if (f->channel != channel || f->cc != cc) continue;
+        fader_current[fi] = value;
+        fader_activated |= (1u << fi);
+        if (value < f->min_value) {
+            fader_fill[fi] = 0;
+            for (uint8_t i = 0; i < f->length; i++)
+                set_led((uint8_t)((int)f->anchor_xy + i * f->pad_step), f->color_off);
+        } else if (value >= f->max_value) {
+            fader_fill[fi] = (uint8_t)(f->length - 1u);
+            update_fader_leds(fi, (uint8_t)(f->length - 1u));
+        } else {
+            uint8_t best = 0, best_diff = 255;
+            for (uint8_t t = 0; t < f->length; t++) {
+                uint8_t cv = (t == 0) ? f->min_value :
+                             (t >= f->length - 1u) ? f->max_value :
+                             (uint8_t)(f->min_value + t * (f->max_value - f->min_value) / (f->length - 1u));
+                uint8_t diff = (value >= cv) ? (value - cv) : (cv - value);
+                if (diff < best_diff) { best_diff = diff; best = t; }
+            }
+            fader_fill[fi] = best;
+            update_fader_leds(fi, best);
+        }
     }
 }
 
@@ -100,8 +129,8 @@ void mix_test_init() {
         for (uint8_t i = 0; i < N_FADERS; i++) {
             fader_current[i] = FADERS[i].min_value;
             fader_fill[i] = 0;
-            send_midi3((uint8_t)(0xB0 | FADERS[i].channel), FADERS[i].cc, FADERS[i].min_value);
         }
+        fader_activated = 0;
         mode_initialized = 1;
     }
     set_led(59, 0xFFDBB7);
@@ -111,7 +140,15 @@ void mix_test_init() {
     set_led(91, toggle[91] ? 0x4488FF : 0x0A1533);
     set_led(92, 0x0A2211);
     set_led(93, 0x331100);
-    for (uint8_t i = 0; i < N_FADERS; i++) update_fader_leds(i, fader_fill[i]);
+    for (uint8_t i = 0; i < N_FADERS; i++) {
+        if (fader_activated & (1u << i)) {
+            update_fader_leds(i, fader_fill[i]);
+        } else {
+            const FaderCfg *f = &FADERS[i];
+            for (uint8_t j = 0; j < f->length; j++)
+                set_led((uint8_t)((int)f->anchor_xy + j * f->pad_step), f->color_off);
+        }
+    }
 }
 
 void mix_test_timer_event() { }
@@ -122,7 +159,7 @@ void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
             if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 69:
-            if (type) mode_switch(MODE_MIX_TEST);
+            if (type) mode_switch(MODE_D_FADE);
             break;
         case 79:
             if (type) mode_switch(MODE_MIXER2);
@@ -175,9 +212,7 @@ void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
                     uint8_t val = (throw_pos == 0) ? f->min_value :
                                   (throw_pos >= f->length - 1u) ? f->max_value :
                                   (uint8_t)(f->min_value + throw_pos * (f->max_value - f->min_value) / (f->length - 1u));
-                    fader_current[fi] = val;
-                    fader_fill[fi]    = throw_pos;
-                    update_fader_leds(fi, throw_pos);
+                    handle_fader_cc(f->channel, f->cc, val);
                     send_midi3((uint8_t)(0xB0 | f->channel), f->cc, val);
                     return;
                 }
@@ -188,7 +223,9 @@ void mix_test_surface_event(uint8_t type, uint8_t index, uint8_t value) {
 }
 
 void mix_test_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) {
-    (void)port; (void)status; (void)d1; (void)d2;
+    (void)port;
+    if ((status & 0xF0) == 0xB0)
+        handle_fader_cc((uint8_t)(status & 0x0F), d1, d2);
 }
 
 void mix_test_aftertouch_event(uint8_t index, uint8_t value) {

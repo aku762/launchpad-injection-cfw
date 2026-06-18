@@ -1,0 +1,250 @@
+{
+  "11": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
+  },
+  "12": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#ffffb7"
+  },
+  "59": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#eb7b0c",
+    "color_off": "#fbd7b3"
+  },
+  "62": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  },
+  "69": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#00ff00",
+    "color_off": "#00ff00"
+  },
+  "79": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
+  },
+  "89": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  },
+  "91": {
+    "type": "cc",
+    "channel": 1,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "momentary",
+    "color_on": "#0000ff",
+    "color_off": "#7a7aff"
+  },
+  "92": {
+    "type": "cc",
+    "channel": 1,
+    "cc": 1,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#8000ff",
+    "color_off": "#bd7aff"
+  },
+  "13": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
+  },
+  "14": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#ffffb7"
+  },
+  "64": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  },
+  "93": {
+    "type": "cc",
+    "channel": 2,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "momentary",
+    "color_on": "#0000ff",
+    "color_off": "#7a7aff"
+  },
+  "94": {
+    "type": "cc",
+    "channel": 2,
+    "cc": 1,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#8000ff",
+    "color_off": "#bd7aff"
+  },
+  "15": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
+  },
+  "16": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#ffffb7"
+  },
+  "66": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  },
+  "95": {
+    "type": "cc",
+    "channel": 3,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "momentary",
+    "color_on": "#0000ff",
+    "color_off": "#7a7aff"
+  },
+  "96": {
+    "type": "cc",
+    "channel": 3,
+    "cc": 1,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#8000ff",
+    "color_off": "#bd7aff"
+  },
+  "17": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
+  },
+  "18": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#ffffb7"
+  },
+  "68": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  },
+  "97": {
+    "type": "cc",
+    "channel": 4,
+    "cc": 0,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "momentary",
+    "color_on": "#0000ff",
+    "color_off": "#7a7aff"
+  },
+  "98": {
+    "type": "cc",
+    "channel": 4,
+    "cc": 1,
+    "value_on": 127,
+    "value_off": 0,
+    "behavior": "toggle",
+    "color_on": "#8000ff",
+    "color_off": "#bd7aff"
+  }
+}
