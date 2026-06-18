@@ -34,7 +34,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 0,
         .max_value  = 95,
         .color_on   = 0x00FF00,
-        .color_off  = 0xB7FFB7,
+        .color_off  = 0x000048,
     },
     {
         .anchor_xy  = 12,
@@ -45,18 +45,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 96,
         .max_value  = 120,
         .color_on   = 0xFFFF00,
-        .color_off  = 0xFFFFB7,
-    },
-    {
-        .anchor_xy  = 62,
-        .length     = 3,
-        .pad_step   = 10,
-        .cc         = 7,
-        .channel    = 0,
-        .min_value  = 121,
-        .max_value  = 127,
-        .color_on   = 0xFF0000,
-        .color_off  = 0xFFB7B7,
+        .color_off  = 0x000048,
     },
     {
         .anchor_xy  = 13,
@@ -67,7 +56,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 0,
         .max_value  = 95,
         .color_on   = 0x00FF00,
-        .color_off  = 0xB7FFB7,
+        .color_off  = 0x00C2C2,
     },
     {
         .anchor_xy  = 14,
@@ -78,18 +67,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 96,
         .max_value  = 120,
         .color_on   = 0xFFFF00,
-        .color_off  = 0xFFFFB7,
-    },
-    {
-        .anchor_xy  = 64,
-        .length     = 3,
-        .pad_step   = 10,
-        .cc         = 7,
-        .channel    = 1,
-        .min_value  = 121,
-        .max_value  = 127,
-        .color_on   = 0xFF0000,
-        .color_off  = 0xFFB7B7,
+        .color_off  = 0x00C2C2,
     },
     {
         .anchor_xy  = 15,
@@ -100,7 +78,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 0,
         .max_value  = 95,
         .color_on   = 0x00FF00,
-        .color_off  = 0xB7FFB7,
+        .color_off  = 0x000048,
     },
     {
         .anchor_xy  = 16,
@@ -111,18 +89,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 96,
         .max_value  = 120,
         .color_on   = 0xFFFF00,
-        .color_off  = 0xFFFFB7,
-    },
-    {
-        .anchor_xy  = 66,
-        .length     = 3,
-        .pad_step   = 10,
-        .cc         = 7,
-        .channel    = 2,
-        .min_value  = 121,
-        .max_value  = 127,
-        .color_on   = 0xFF0000,
-        .color_off  = 0xFFB7B7,
+        .color_off  = 0x000048,
     },
     {
         .anchor_xy  = 17,
@@ -133,7 +100,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 0,
         .max_value  = 95,
         .color_on   = 0x00FF00,
-        .color_off  = 0xB7FFB7,
+        .color_off  = 0x00C2C2,
     },
     {
         .anchor_xy  = 18,
@@ -144,7 +111,40 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 96,
         .max_value  = 120,
         .color_on   = 0xFFFF00,
-        .color_off  = 0xFFFFB7,
+        .color_off  = 0x00C2C2,
+    },
+    {
+        .anchor_xy  = 62,
+        .length     = 3,
+        .pad_step   = 10,
+        .cc         = 7,
+        .channel    = 0,
+        .min_value  = 121,
+        .max_value  = 127,
+        .color_on   = 0xFF0000,
+        .color_off  = 0x000048,
+    },
+    {
+        .anchor_xy  = 64,
+        .length     = 3,
+        .pad_step   = 10,
+        .cc         = 7,
+        .channel    = 1,
+        .min_value  = 121,
+        .max_value  = 127,
+        .color_on   = 0xFF0000,
+        .color_off  = 0x00C2C2,
+    },
+    {
+        .anchor_xy  = 66,
+        .length     = 3,
+        .pad_step   = 10,
+        .cc         = 7,
+        .channel    = 2,
+        .min_value  = 121,
+        .max_value  = 127,
+        .color_on   = 0xFF0000,
+        .color_off  = 0x000048,
     },
     {
         .anchor_xy  = 68,
@@ -155,7 +155,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .min_value  = 121,
         .max_value  = 127,
         .color_on   = 0xFF0000,
-        .color_off  = 0xFFB7B7,
+        .color_off  = 0x00C2C2,
     },
 };
 
@@ -238,13 +238,13 @@ void d_fade_timer_event() { }
 void d_fade_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     switch (index) {
         case 59:
-            if (type) mode_switch(MODE_MIXER1);
+            if (type) mode_switch(MODE_MEGA_FADERS);
             break;
         case 69:
-            if (type) mode_switch(MODE_MIXER1);
+            if (type) mode_switch(MODE_D_FADE);
             break;
         case 79:
-            if (type) mode_switch(MODE_MIXER1);
+            if (type) mode_switch(MODE_MIXER2);
             break;
         case 89:
             if (type) mode_switch(MODE_MIXER1);

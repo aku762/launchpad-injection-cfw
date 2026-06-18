@@ -9,7 +9,7 @@
     "max_value": 95,
     "curve_mode": false,
     "color_on": "#00ff00",
-    "color_off": "#b7ffb7"
+    "color_off": "#000048"
   },
   "12": {
     "type": "fader",
@@ -21,11 +21,83 @@
     "max_value": 120,
     "curve_mode": false,
     "color_on": "#ffff00",
-    "color_off": "#ffffb7"
+    "color_off": "#000048"
+  },
+  "13": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#00c2c2"
+  },
+  "14": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#00c2c2"
+  },
+  "15": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#000048"
+  },
+  "16": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#000048"
+  },
+  "17": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 95,
+    "curve_mode": false,
+    "color_on": "#00ff00",
+    "color_off": "#00c2c2"
+  },
+  "18": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 5,
+    "direction": "up",
+    "min_value": 96,
+    "max_value": 120,
+    "curve_mode": false,
+    "color_on": "#ffff00",
+    "color_off": "#00c2c2"
   },
   "59": {
     "type": "mode_switch",
-    "target_mode": 0,
+    "target_mode": 3,
     "color_on": "#eb7b0c",
     "color_off": "#fbd7b3"
   },
@@ -39,17 +111,53 @@
     "max_value": 127,
     "curve_mode": false,
     "color_on": "#ff0000",
-    "color_off": "#ffb7b7"
+    "color_off": "#000048"
+  },
+  "64": {
+    "type": "fader",
+    "channel": 2,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#00c2c2"
+  },
+  "66": {
+    "type": "fader",
+    "channel": 3,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#000048"
+  },
+  "68": {
+    "type": "fader",
+    "channel": 4,
+    "cc": 7,
+    "length": 3,
+    "direction": "up",
+    "min_value": 121,
+    "max_value": 127,
+    "curve_mode": false,
+    "color_on": "#ff0000",
+    "color_off": "#00c2c2"
   },
   "69": {
     "type": "mode_switch",
-    "target_mode": 0,
+    "target_mode": 2,
     "color_on": "#00ff00",
     "color_off": "#00ff00"
   },
   "79": {
     "type": "mode_switch",
-    "target_mode": 0,
+    "target_mode": 1,
     "color_on": "#0000ff",
     "color_off": "#b7b7ff"
   },
@@ -79,42 +187,6 @@
     "color_on": "#8000ff",
     "color_off": "#bd7aff"
   },
-  "13": {
-    "type": "fader",
-    "channel": 2,
-    "cc": 7,
-    "length": 8,
-    "direction": "up",
-    "min_value": 0,
-    "max_value": 95,
-    "curve_mode": false,
-    "color_on": "#00ff00",
-    "color_off": "#b7ffb7"
-  },
-  "14": {
-    "type": "fader",
-    "channel": 2,
-    "cc": 7,
-    "length": 5,
-    "direction": "up",
-    "min_value": 96,
-    "max_value": 120,
-    "curve_mode": false,
-    "color_on": "#ffff00",
-    "color_off": "#ffffb7"
-  },
-  "64": {
-    "type": "fader",
-    "channel": 2,
-    "cc": 7,
-    "length": 3,
-    "direction": "up",
-    "min_value": 121,
-    "max_value": 127,
-    "curve_mode": false,
-    "color_on": "#ff0000",
-    "color_off": "#ffb7b7"
-  },
   "93": {
     "type": "cc",
     "channel": 2,
@@ -135,42 +207,6 @@
     "color_on": "#8000ff",
     "color_off": "#bd7aff"
   },
-  "15": {
-    "type": "fader",
-    "channel": 3,
-    "cc": 7,
-    "length": 8,
-    "direction": "up",
-    "min_value": 0,
-    "max_value": 95,
-    "curve_mode": false,
-    "color_on": "#00ff00",
-    "color_off": "#b7ffb7"
-  },
-  "16": {
-    "type": "fader",
-    "channel": 3,
-    "cc": 7,
-    "length": 5,
-    "direction": "up",
-    "min_value": 96,
-    "max_value": 120,
-    "curve_mode": false,
-    "color_on": "#ffff00",
-    "color_off": "#ffffb7"
-  },
-  "66": {
-    "type": "fader",
-    "channel": 3,
-    "cc": 7,
-    "length": 3,
-    "direction": "up",
-    "min_value": 121,
-    "max_value": 127,
-    "curve_mode": false,
-    "color_on": "#ff0000",
-    "color_off": "#ffb7b7"
-  },
   "95": {
     "type": "cc",
     "channel": 3,
@@ -190,42 +226,6 @@
     "behavior": "toggle",
     "color_on": "#8000ff",
     "color_off": "#bd7aff"
-  },
-  "17": {
-    "type": "fader",
-    "channel": 4,
-    "cc": 7,
-    "length": 8,
-    "direction": "up",
-    "min_value": 0,
-    "max_value": 95,
-    "curve_mode": false,
-    "color_on": "#00ff00",
-    "color_off": "#b7ffb7"
-  },
-  "18": {
-    "type": "fader",
-    "channel": 4,
-    "cc": 7,
-    "length": 5,
-    "direction": "up",
-    "min_value": 96,
-    "max_value": 120,
-    "curve_mode": false,
-    "color_on": "#ffff00",
-    "color_off": "#ffffb7"
-  },
-  "68": {
-    "type": "fader",
-    "channel": 4,
-    "cc": 7,
-    "length": 3,
-    "direction": "up",
-    "min_value": 121,
-    "max_value": 127,
-    "curve_mode": false,
-    "color_on": "#ff0000",
-    "color_off": "#ffb7b7"
   },
   "97": {
     "type": "cc",
