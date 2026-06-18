@@ -61,8 +61,10 @@ Each widget supports a `label` (up to 6 characters, shown on the pad) and a long
 - `trigger` — fires the on-value once per press and never sends an off-value (no MIDI message at all on release). The LED still dims to the off color on release, purely visual, so it reads like a momentary pad without producing a spurious release message downstream.
 
 **Fader features:**
-- Variable length (2–9 pads), vertical or horizontal
-- Snaps instantly to the pressed position — this part works on device (see Mega Faders mode).
+- Variable length (2–9 pads), vertical or horizontal, configurable `min_value`/`max_value` — ranges don't have to be 0–127, so multiple faders can cover adjacent sub-ranges of the same CC for a single long fader feel (e.g. col 1 = 0–95 green, col 2 = 96–120 yellow, 121–127 red).
+- **Reactive init** — faders start dark on boot (all pads draw `color_off`, no position dot). The first touch or incoming CC fires the display. This makes split-range multi-segment layouts visually correct from the start.
+- **Internal CC broadcast** (`handle_fader_cc`) — when any fader pad is pressed, the generated code broadcasts the resulting CC value to every other fader in the layout sharing the same channel+CC. Faders whose range is below the value go dark; faders whose range is above go fully lit; faders whose range contains the value show the nearest throw position. A three-segment green/yellow/red layout self-coordinates on every touch with no external MIDI routing needed.
+- **Incoming MIDI CC** — `midi_event` now routes incoming `0xBx` CC messages through the same broadcast path, so a DAW or external device sending CC feedback on the same channel+CC updates all matching fader segments live.
 - `curve_mode` (anchor pad as a slew-rate selector — instant/slow/medium/fast, shown via anchor LED color) is parsed from the JSON but **not implemented in the generator yet** — `tools/json_to_mode.py` always emits instant-snap behavior regardless of this flag. Setting it in the editor currently has no effect on device.
 
 Save a layout as `.json` (File > Export, or copy straight from the browser) into `editor/`.
@@ -118,6 +120,7 @@ Mini's injectable gap is small (~15KB) and most of it is gone once the stock-fir
 - **Removed the lpp/lppmk3/lpx/mk2 device drivers, linker scripts, patch configs, and prebuilt binaries** from the repo entirely — this fork only ever targets Mini Mk3, and none of that ever built into the Mini image, but keeping it around was pure repo noise.
 - **Moved the global hold-to-Setup gesture** off the Session button onto Stop-Solo-Mute, freeing Session to double as a normal `mode_switch` target without it feeling like an awkward overload. (Not a flash saving, but bundled with the rest of this pass.)
 - **Verified the chip's real flash capacity** (128KB) directly via the hardware `FLASHSIZE` register rather than guessing from RAM size — ruled out a hoped-for ~128KB of "extra" flash that turned out not to exist.
+- **Fader dispatch optimized from O(N×length) to O(1)** — the generator previously emitted one `case XY:` per fader pad (a 64-fader layout produced ~350 case arms); it now emits a single `default:` loop that resolves any pad to its fader at runtime using `anchor_xy + pad_step` arithmetic. Saved 3,920 bytes of flash (~41% of the code section) in the Mega Faders build.
 
 ### RAM safety on Mini
 
