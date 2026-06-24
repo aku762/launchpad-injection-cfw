@@ -95,6 +95,12 @@
     "color_on": "#ffff00",
     "color_off": "#00c2c2"
   },
+  "49": {
+    "type": "mode_switch",
+    "target_mode": 4,
+    "color_on": "#ff00ff",
+    "color_off": "#ffb7ff"
+  },
   "59": {
     "type": "mode_switch",
     "target_mode": 3,

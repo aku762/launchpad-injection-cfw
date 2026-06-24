@@ -38,7 +38,8 @@ USER_MODE_SRC= \
 	src/mode/user/mixer1.c \
 	src/mode/user/mixer2.c \
 	src/mode/user/d_fade.c \
-	src/mode/user/mega_faders.c
+	src/mode/user/mega_faders.c \
+	src/mode/user/lfo_test.c
 # END GENERATED MODE SRC
 
 SRC=$(DRIVER_SRC) \
@@ -48,6 +49,8 @@ SRC=$(DRIVER_SRC) \
 	src/utils/palette.c \
 	src/utils/sysex.c \
 	src/utils/cc_state.c \
+	src/utils/fader.c \
+	src/utils/lfo.c \
 	src/flash/settings.c \
 	src/flash/flash.c \
 	src/mode/mode.c \

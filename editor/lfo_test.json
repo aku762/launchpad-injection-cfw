@@ -1,0 +1,72 @@
+{
+  "11": {
+    "type": "lfo",
+    "channel": 1,
+    "cc": 44,
+    "length": 8,
+    "direction": "up",
+    "min_val": 0,
+    "max_val": 127,
+    "start_val": 63,
+    "rate_channel": 1,
+    "rate_cc": 33,
+    "rate_min_ms": 100,
+    "rate_max_ms": 5000,
+    "color_on": "#22ffcc",
+    "color_off": "#001a16"
+  },
+  "12": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 33,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "smooth_group": -1,
+    "color_on": "#33cccc",
+    "color_off": "#0a2222"
+  },
+  "14": {
+    "type": "fader",
+    "channel": 1,
+    "cc": 44,
+    "length": 8,
+    "direction": "up",
+    "min_value": 0,
+    "max_value": 127,
+    "smooth_group": -1,
+    "color_on": "#ff0000",
+    "color_off": "#480000"
+  },
+  "49": {
+    "type": "mode_switch",
+    "target_mode": 4,
+    "color_on": "#ff00ff",
+    "color_off": "#ff00ff"
+  },
+  "59": {
+    "type": "mode_switch",
+    "target_mode": 3,
+    "color_on": "#ff8000",
+    "color_off": "#ffdbb7"
+  },
+  "69": {
+    "type": "mode_switch",
+    "target_mode": 2,
+    "color_on": "#00ff00",
+    "color_off": "#b7ffb7"
+  },
+  "79": {
+    "type": "mode_switch",
+    "target_mode": 1,
+    "color_on": "#0000ff",
+    "color_off": "#b7b7ff"
+  },
+  "89": {
+    "type": "mode_switch",
+    "target_mode": 0,
+    "color_on": "#ff0000",
+    "color_off": "#ffb7b7"
+  }
+}
