@@ -110,8 +110,7 @@ typedef struct {
     uint8_t  start_val;
     uint8_t  rate_channel;
     uint8_t  rate_cc;
-    uint16_t rate_min_ticks;
-    uint16_t rate_max_ticks;
+    uint16_t rate_ticks[128];
     uint32_t color_on;
     uint32_t color_off;
 } LfoCfg;
@@ -129,8 +128,7 @@ static const LfoCfg LFOS[N_LFOS] = {
         .start_val      = 63,
         .rate_channel   = 0,
         .rate_cc        = 33,
-        .rate_min_ticks = 14,
-        .rate_max_ticks = 714,
+        .rate_ticks     = { 0, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 28, 27, 26, 25, 24, 24, 23, 22, 22, 21, 21, 20, 19, 19, 18, 18, 17, 17, 16, 16, 15, 15, 15, 14, 14, 13, 13, 13, 12, 12, 12, 11, 11, 11, 10, 10, 10, 9, 9, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 7, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 },
         .color_on       = 0x22FFCC,
         .color_off      = 0x001A16,
     },
@@ -193,7 +191,7 @@ void lfo_test_init() {
         const LfoCfg *l = &LFOS[li];
         lfo_register(l->channel, l->cc, l->min_val, l->max_val, l->start_val,
                      l->length,
-                     l->rate_channel, l->rate_cc, l->rate_min_ticks, l->rate_max_ticks);
+                     l->rate_channel, l->rate_cc, l->rate_ticks);
         uint8_t cur = lfo_current(l->channel, l->cc);
         update_lfo_display(li, (cur != 0xFF) ? cur : l->start_val);
     }

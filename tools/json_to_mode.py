@@ -13,6 +13,7 @@ Then follow the printed instructions to register the mode.
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -65,6 +66,18 @@ def send(status, d1, d2):
     # blows the flash budget.
     return f'send_midi3({status:#04X}, {d1}, {d2});'
 
+def make_rate_ticks_table(rate_min_ticks, rate_max_ticks):
+    """128-entry exponential lookup table for LFO rate. Index = CC value.
+    CC=0 is unused (stopped). CC=1=slowest, CC=127=fastest."""
+    table = [0]  # CC=0: unused
+    log_min = math.log(max(1, rate_min_ticks))
+    log_max = math.log(max(1, rate_max_ticks))
+    for i in range(1, 128):
+        t = (i - 1) / 126.0  # 0.0=slowest, 1.0=fastest
+        table.append(max(1, round(math.exp(log_max + t * (log_min - log_max)))))
+    return table
+
+
 def fader_value_at(pos, throw_count, min_val, max_val):
     """Precompute the exact CC value for throw position pos (0-indexed)."""
     if throw_count <= 1 or pos == 0:
@@ -95,12 +108,13 @@ def extract_lfos(layout):
         rate_ch     = midi_ch(b.get('rate_channel', 1))
         rate_cc     = int(b.get('rate_cc', 20))
 
-        # ms → ticks per pad hop: total sweep time / (length-1 hops)
-        steps          = max(1, length - 1)
+        # ms → ticks per CC step, then build exponential lookup table
+        span           = max(1, max_val - min_val)
         rate_min_ms    = int(b.get('rate_min_ms', 100))
         rate_max_ms    = int(b.get('rate_max_ms', 5000))
-        rate_min_ticks = max(1, round(rate_min_ms / steps))
-        rate_max_ticks = max(rate_min_ticks, round(rate_max_ms / steps))
+        rate_min_ticks = max(1, round(rate_min_ms / span))
+        rate_max_ticks = max(rate_min_ticks + 1, round(rate_max_ms / span))
+        rate_ticks     = make_rate_ticks_table(rate_min_ticks, rate_max_ticks)
 
         pads = [xy + i * step for i in range(length)]
 
@@ -116,8 +130,7 @@ def extract_lfos(layout):
             'start_val':      start_val,
             'rate_channel':   rate_ch,
             'rate_cc':        rate_cc,
-            'rate_min_ticks': rate_min_ticks,
-            'rate_max_ticks': rate_max_ticks,
+            'rate_ticks':     rate_ticks,
             'color_on':       hex_c(b.get('color_on',  '#22ffcc')),
             'color_off':      hex_c(b.get('color_off', '#001a16')),
             'pads':           pads,
@@ -140,8 +153,7 @@ def gen_lfo_struct():
         '    uint8_t  start_val;',
         '    uint8_t  rate_channel;',
         '    uint8_t  rate_cc;',
-        '    uint16_t rate_min_ticks;',
-        '    uint16_t rate_max_ticks;',
+        '    uint16_t rate_ticks[128];',
         '    uint32_t color_on;',
         '    uint32_t color_off;',
         '} LfoCfg;',
@@ -540,8 +552,8 @@ def generate(layout, name):
             c.append(f'        .start_val      = {lfo["start_val"]},')
             c.append(f'        .rate_channel   = {lfo["rate_channel"]},')
             c.append(f'        .rate_cc        = {lfo["rate_cc"]},')
-            c.append(f'        .rate_min_ticks = {lfo["rate_min_ticks"]},')
-            c.append(f'        .rate_max_ticks = {lfo["rate_max_ticks"]},')
+            tbl = ', '.join(str(v) for v in lfo['rate_ticks'])
+            c.append(f'        .rate_ticks     = {{ {tbl} }},')
             c.append(f'        .color_on       = {lfo["color_on"]},')
             c.append(f'        .color_off      = {lfo["color_off"]},')
             c.append(f'    }},')
@@ -638,7 +650,7 @@ def generate(layout, name):
         c.append('        const LfoCfg *l = &LFOS[li];')
         c.append('        lfo_register(l->channel, l->cc, l->min_val, l->max_val, l->start_val,')
         c.append('                     l->length,')
-        c.append('                     l->rate_channel, l->rate_cc, l->rate_min_ticks, l->rate_max_ticks);')
+        c.append('                     l->rate_channel, l->rate_cc, l->rate_ticks);')
         c.append('        uint8_t cur = lfo_current(l->channel, l->cc);')
         c.append('        update_lfo_display(li, (cur != 0xFF) ? cur : l->start_val);')
         c.append('    }')
