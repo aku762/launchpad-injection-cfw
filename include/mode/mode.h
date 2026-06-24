@@ -26,20 +26,23 @@ extern uint8_t mode;
 #define MODE_MIXER2 1
 #include "mode/user/mixer2.h"
 
-#define MODE_MIX_TEST 2
-#include "mode/user/mix_test.h"
+#define MODE_D_FADE 2
+#include "mode/user/d_fade.h"
 
 #define MODE_MEGA_FADERS 3
 #include "mode/user/mega_faders.h"
 
-#define MODE_BOOT 4
+#define MODE_LFO_TEST 4
+#include "mode/user/lfo_test.h"
+
+#define MODE_BOOT 5
 #include "mode/system/boot.h"
 
-#define MODE_SETUP 5
+#define MODE_SETUP 6
 #include "mode/system/setup.h"
 
 #define MODE_DEFAULT MODE_MIXER1
-#define MODES_COUNT 6
+#define MODES_COUNT 7
 // END GENERATED MODES
 
 struct Mode {

@@ -1,4 +1,6 @@
 #include "driver/driver.h"
+#include "utils/fader.h"
+#include "utils/lfo.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -153,6 +155,8 @@ void CFW_AppTick(int32_t arg1, int32_t arg2, int32_t arg3, int32_t arg4) {
         }
     }
     FW_TICK(arg1, arg2, arg3, arg4);
+    fader_tick();
+    lfo_tick();
     app_timer_event();
 }
 

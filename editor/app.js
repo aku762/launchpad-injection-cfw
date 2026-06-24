@@ -58,14 +58,47 @@ const WIDGET_DEFS = {
   fader: {
     label: 'Fader',
     color: '#33cccc',
-    defaults: { channel: 1, cc: 0, length: 4, direction: 'up', min_value: 0, max_value: 127, curve_mode: false, color_on: '#33cccc', color_off: '#0a2222' },
+    defaults: { channel: 1, cc: 0, length: 4, direction: 'up', min_value: 0, max_value: 127, smooth_group: -1, color_on: '#33cccc', color_off: '#0a2222' },
+  },
+  smooth_fader: {  /* legacy alias — loads fine, treated as fader */
+    label: 'Fader',
+    color: '#33cccc',
+    defaults: { channel: 1, cc: 0, length: 4, direction: 'up', min_value: 0, max_value: 127, smooth_group: -1, color_on: '#33cccc', color_off: '#0a2222' },
   },
   mode_switch: {
     label: 'Mode Switch',
     color: '#cc44ff',
     defaults: { target_mode: 0, color_on: '#cc44ff', color_off: '#220033' },
   },
+  curve_btn: {
+    label: 'Curve Button',
+    color: '#22cc44',
+    defaults: {
+      smooth_group: 0,
+      rates: [
+        { ms: 127,  color: '#ffffff' },
+        { ms: 508,  color: '#22cc44' },
+        { ms: 2032, color: '#cccc00' },
+        { ms: 8001, color: '#cc2222' },
+      ],
+    },
+  },
+  lfo: {
+    label: 'LFO',
+    color: '#22ffcc',
+    defaults: {
+      channel: 1, cc: 10,
+      length: 4, direction: 'up',
+      min_val: 0, max_val: 127, start_val: 63,
+      rate_channel: 1, rate_cc: 20,
+      rate_min_ms: 100, rate_max_ms: 5000,
+      color_on: '#22ffcc', color_off: '#001a16',
+    },
+  },
 };
+
+function isFaderType(type) { return type === 'fader' || type === 'smooth_fader'; }
+function isMultiPadType(type) { return isFaderType(type) || type === 'lfo'; }
 
 // Palette: true RGB maxes first, then Novation's curated primaries/pastels
 const PALETTE = [
@@ -372,17 +405,17 @@ function onDrop(xy) {
     const sourceCfg = state.get(sourceXy);
     if (!sourceCfg) return;
 
-    if (sourceCfg.type === 'fader') {
+    if (isMultiPadType(sourceCfg.type)) {
       if (!canPlaceFader(xy, sourceCfg, sourceXy)) return;
     } else {
-      // Non-fader: block if target is a satellite of another fader, or already occupied
+      // Non-fader: block if target is a satellite of another fader/lfo, or already occupied
       const owner = faderOwner.get(xy);
       if (owner !== undefined && owner !== sourceXy) return;
       if (state.has(xy)) return;
     }
 
     // Clear source
-    if (sourceCfg.type === 'fader') clearFaderSatellites(sourceXy);
+    if (isMultiPadType(sourceCfg.type)) clearFaderSatellites(sourceXy);
     state.delete(sourceXy);
     const srcEl = getPadEl(sourceXy);
     if (srcEl) {
@@ -403,15 +436,22 @@ function onDrop(xy) {
   // Sidebar drop — block on satellite pads
   if (faderOwner.has(xy)) return;
 
-  // If overwriting a fader anchor, clear its satellites first
+  // If overwriting a fader/lfo anchor, clear its satellites first
   const existing = state.get(xy);
-  if (existing && existing.type === 'fader') clearFaderSatellites(xy);
+  if (existing && isMultiPadType(existing.type)) clearFaderSatellites(xy);
 
   const def = WIDGET_DEFS[type];
   if (!def) return;
   const newCfg = { type, ...JSON.parse(JSON.stringify(def.defaults)) };
 
-  if (type === 'fader' && !canPlaceFader(xy, newCfg)) return;
+  if (isMultiPadType(type) && !canPlaceFader(xy, newCfg)) return;
+
+  // Auto-increment smooth_group for curve_btn so each button gets a unique ID
+  if (type === 'curve_btn') {
+    let maxGroup = -1;
+    state.forEach(cfg => { if (cfg.type === 'curve_btn' && cfg.smooth_group > maxGroup) maxGroup = cfg.smooth_group; });
+    newCfg.smooth_group = maxGroup + 1;
+  }
 
   state.set(xy, newCfg);
   refreshPad(xy);
@@ -496,11 +536,14 @@ function showProperties(xy) {
     case 'note':   renderNoteProps(body, xy, cfg); break;
     case 'cc':     renderCCProps(body, xy, cfg);   break;
     case 'pc':     renderPCProps(body, xy, cfg);   break;
-    case 'fader':  renderFaderProps(body, xy, cfg); break;
-    case 'mode_switch': renderModeSwitchProps(body, xy, cfg); break;
+    case 'fader':
+    case 'smooth_fader': renderFaderProps(body, xy, cfg); break;
+    case 'curve_btn':    renderCurveBtnProps(body, xy, cfg); break;
+    case 'mode_switch':  renderModeSwitchProps(body, xy, cfg); break;
+    case 'lfo':          renderLfoProps(body, xy, cfg); break;
   }
 
-  body.appendChild(renderColorPickers(xy, cfg));
+  if (cfg.type !== 'curve_btn') body.appendChild(renderColorPickers(xy, cfg));
 }
 
 function closeProperties() {
@@ -515,7 +558,7 @@ function closeProperties() {
 function removeSelected() {
   if (selectedXy === null) return;
   const cfg = state.get(selectedXy);
-  if (cfg && cfg.type === 'fader') clearFaderSatellites(selectedXy);
+  if (cfg && isMultiPadType(cfg.type)) clearFaderSatellites(selectedXy);
   state.delete(selectedXy);
   refreshPad(selectedXy);
   closeProperties();
@@ -638,27 +681,114 @@ function renderFaderProps(body, xy, cfg) {
     refreshPad(xy);
   })));
 
-  // Curve mode toggle
-  const curveWrap = document.createElement('div');
-  curveWrap.className = 'prop-group';
-  const curveLbl = document.createElement('label');
-  curveLbl.textContent = 'Curve Rate Button';
-  curveWrap.appendChild(curveLbl);
-  const curveNote = document.createElement('div');
-  curveNote.style.cssText = 'font-size:10px;color:var(--text-dim);margin-bottom:6px;line-height:1.4';
-  curveNote.textContent = 'Anchor pad cycles rate: instant → 1 bar → 4 bars → 16 bars. Gives up one throw position.';
-  curveWrap.appendChild(curveNote);
-  const curveBtn = document.createElement('button');
-  curveBtn.className = 'btn' + (cfg.curve_mode ? ' btn-active' : '');
-  curveBtn.textContent = cfg.curve_mode ? 'Enabled' : 'Disabled';
-  curveBtn.addEventListener('click', () => {
-    state.get(xy).curve_mode = !state.get(xy).curve_mode;
-    curveBtn.classList.toggle('btn-active', state.get(xy).curve_mode);
-    curveBtn.textContent = state.get(xy).curve_mode ? 'Enabled' : 'Disabled';
-    refreshPad(xy);
-  });
-  curveWrap.appendChild(curveBtn);
-  body.appendChild(curveWrap);
+  // Smooth group selector — works for all fader types now.
+  const groups = [];
+  state.forEach(c => { if (c.type === 'curve_btn' && !groups.includes(c.smooth_group)) groups.push(c.smooth_group); });
+  groups.sort((a, b) => a - b);
+  const sgWrap = document.createElement('div');
+  sgWrap.className = 'prop-group';
+  const sgLbl = document.createElement('label');
+  sgLbl.textContent = 'Curve Button Group';
+  sgWrap.appendChild(sgLbl);
+  if (groups.length === 0) {
+    const sgNote = document.createElement('div');
+    sgNote.style.cssText = 'font-size:10px;color:var(--text-dim);line-height:1.4';
+    sgNote.textContent = 'Place a Curve Button on the grid to assign a rate group. Without one, fader uses instant speed.';
+    sgWrap.appendChild(sgNote);
+  } else {
+    const opts = [[-1, 'None (instant)'], ...groups.map(g => [g, `Group ${g}`])];
+    const cur = cfg.smooth_group ?? -1;
+    sgWrap.appendChild(select(opts, cur, v => { state.get(xy).smooth_group = parseInt(v); }));
+  }
+  body.appendChild(sgWrap);
+}
+
+function renderCurveBtnProps(body, xy, cfg) {
+  // Migrate old format (no rates field)
+  if (!cfg.rates || !cfg.rates.length) {
+    cfg.rates = JSON.parse(JSON.stringify(WIDGET_DEFS.curve_btn.defaults.rates));
+  }
+
+  const note = document.createElement('div');
+  note.style.cssText = 'font-size:10px;color:var(--text-dim);margin-bottom:10px;line-height:1.4';
+  note.textContent = `Group ${cfg.smooth_group} — tap pad to cycle rates. Assign smooth faders to group ${cfg.smooth_group}.`;
+  body.appendChild(note);
+
+  const ratesWrap = document.createElement('div');
+  ratesWrap.style.cssText = 'display:flex;flex-direction:column;gap:5px';
+
+  function renderRates() {
+    ratesWrap.innerHTML = '';
+    cfg.rates.forEach((rate, i) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px';
+
+      const colorInput = document.createElement('input');
+      colorInput.type = 'color';
+      colorInput.value = rate.color;
+      colorInput.title = 'Rate color';
+      colorInput.style.cssText = 'width:32px;height:26px;padding:1px;border:1px solid var(--border);cursor:pointer;flex-shrink:0';
+      colorInput.addEventListener('input', () => {
+        cfg.rates[i].color = colorInput.value;
+        if (i === 0) refreshPad(xy);
+      });
+      row.appendChild(colorInput);
+
+      const msInput = document.createElement('input');
+      msInput.type = 'number';
+      msInput.min = 50;
+      msInput.max = 30000;
+      msInput.step = 1;
+      msInput.value = rate.ms;
+      msInput.style.cssText = 'width:72px;';
+      msInput.title = 'Full sweep duration (ms)';
+      msInput.addEventListener('change', () => {
+        cfg.rates[i].ms = Math.max(50, parseInt(msInput.value) || 127);
+        msInput.value = cfg.rates[i].ms;
+      });
+      row.appendChild(msInput);
+
+      const msLbl = document.createElement('span');
+      msLbl.textContent = 'ms';
+      msLbl.style.cssText = 'font-size:10px;color:var(--text-dim);flex-shrink:0';
+      row.appendChild(msLbl);
+
+      if (cfg.rates.length > 1) {
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '✕';
+        removeBtn.style.cssText = 'padding:1px 5px;cursor:pointer;flex-shrink:0';
+        removeBtn.addEventListener('click', () => {
+          cfg.rates.splice(i, 1);
+          if (i === 0) refreshPad(xy);
+          renderRates();
+        });
+        row.appendChild(removeBtn);
+      }
+
+      ratesWrap.appendChild(row);
+    });
+
+    if (cfg.rates.length < 4) {
+      const addBtn = document.createElement('button');
+      addBtn.textContent = '+ Add Rate';
+      addBtn.style.cssText = 'margin-top:3px;cursor:pointer;width:100%';
+      addBtn.addEventListener('click', () => {
+        cfg.rates.push({ ms: 1000, color: '#888888' });
+        renderRates();
+      });
+      ratesWrap.appendChild(addBtn);
+    }
+  }
+
+  renderRates();
+
+  const grpEl = document.createElement('div');
+  grpEl.className = 'prop-group';
+  const lbl = document.createElement('label');
+  lbl.textContent = 'Rates (fast → slow)';
+  grpEl.appendChild(lbl);
+  grpEl.appendChild(ratesWrap);
+  body.appendChild(grpEl);
 }
 
 function renderModeSwitchProps(body, xy, cfg) {
@@ -806,13 +936,8 @@ function padDisplayContent(cfg) {
       wrap.appendChild(line(chLabel(cfg.channel)));
       break;
     case 'fader':
-      if (lbl) {
-        wrap.appendChild(line(lbl));
-      } else if (cfg.curve_mode) {
-        wrap.appendChild(line('⟳ RATE'));
-      } else {
-        wrap.appendChild(line('▤ CC' + cfg.cc));
-      }
+    case 'smooth_fader':
+      wrap.appendChild(line(lbl || ('▤ CC' + cfg.cc)));
       wrap.appendChild(line((cfg.min_value ?? 0) + '→' + (cfg.max_value ?? 127)));
       break;
     case 'mode_switch': {
@@ -820,6 +945,13 @@ function padDisplayContent(cfg) {
       wrap.appendChild(line(lbl || (entry ? `⇄ ${entry.name || entry.id}` : '⇄ M' + cfg.target_mode)));
       break;
     }
+    case 'curve_btn':
+      wrap.appendChild(line(lbl || `⟳ G${cfg.smooth_group}`));
+      break;
+    case 'lfo':
+      wrap.appendChild(line(lbl || ('◎ CC' + cfg.cc)));
+      wrap.appendChild(line(chLabel(cfg.channel)));
+      break;
   }
 
   return wrap;
@@ -830,7 +962,8 @@ function refreshPad(xy) {
   if (faderOwner.has(xy)) return;
 
   const cfg = state.get(xy);
-  if (cfg && cfg.type === 'fader') { refreshFader(xy); return; }
+  if (cfg && isFaderType(cfg.type)) { refreshFader(xy); return; }
+  if (cfg && cfg.type === 'lfo') { refreshLfo(xy); return; }
 
   const el = getPadEl(xy);
   if (!el) return;
@@ -847,7 +980,13 @@ function refreshPad(xy) {
   }
 
   if (labelEl) labelEl.style.display = 'none';
-  const color = previewOff ? cfg.color_off : cfg.color_on;
+  let color;
+  if (cfg.type === 'curve_btn') {
+    const r0 = (cfg.rates && cfg.rates[0]) ? cfg.rates[0].color : '#22cc44';
+    color = previewOff ? dimHex(r0, 0.25) : r0;
+  } else {
+    color = previewOff ? cfg.color_off : cfg.color_on;
+  }
   el.style.background = color;
   el.style.borderColor = color;
   const info = padDisplayContent(cfg);
@@ -873,9 +1012,11 @@ function refreshFader(xy) {
     return;
   }
 
-  // Anchor pad color: in curve_mode shows white (instant rate default), otherwise normal
+  // Anchor pad color: smooth_fader and fader both use color_on (rate control is on
+  // a separate curve_btn widget, not embedded in the fader). Legacy fader curve_mode
+  // is visually kept as-is for now but not generated.
   const RATE_COLORS = ['#ffffff', '#22cc44', '#cccc00', '#cc2222'];
-  const anchorColor = cfg.curve_mode
+  const anchorColor = cfg.curve_mode && cfg.type === 'fader'
     ? (previewOff ? '#333333' : RATE_COLORS[0])
     : (previewOff ? cfg.color_off : cfg.color_on);
 
@@ -905,6 +1046,104 @@ function refreshFader(xy) {
     seg.className = 'fader-seg';
     sel.appendChild(seg);
   });
+}
+
+function refreshLfo(xy) {
+  clearFaderSatellites(xy);
+
+  const el = getPadEl(xy);
+  if (!el) return;
+  el.querySelectorAll('.pad-info').forEach(d => d.remove());
+
+  const cfg = state.get(xy);
+  const labelEl = el.querySelector('.pad-label');
+
+  if (!cfg) {
+    el.style.background = '';
+    el.style.borderColor = '';
+    if (labelEl) labelEl.style.display = '';
+    return;
+  }
+
+  const len   = cfg.length || 4;
+  const minV  = cfg.min_val ?? 0;
+  const maxV  = cfg.max_val ?? 127;
+  const startV = cfg.start_val ?? Math.round((minV + maxV) / 2);
+
+  let dotIdx = 0;
+  if (maxV > minV && len > 1) {
+    dotIdx = Math.round((startV - minV) * (len - 1) / (maxV - minV));
+    dotIdx = Math.max(0, Math.min(len - 1, dotIdx));
+  }
+
+  const onColor  = previewOff ? cfg.color_off : cfg.color_on;
+  const offColor = cfg.color_off;
+
+  if (labelEl) labelEl.style.display = 'none';
+
+  // Anchor pad (index 0)
+  const anchorColor = (dotIdx === 0) ? onColor : offColor;
+  el.style.background  = anchorColor;
+  el.style.borderColor = anchorColor;
+  const info = padDisplayContent(cfg);
+  info.style.color = contrastColor(anchorColor);
+  el.appendChild(info);
+
+  // Satellite pads
+  const pads = getFaderPads(xy, cfg);
+  pads.slice(1).forEach((sxy, i) => {
+    faderOwner.set(sxy, xy);
+    const sel = getPadEl(sxy);
+    if (!sel) return;
+    const slbl = sel.querySelector('.pad-label');
+    if (slbl) slbl.style.display = 'none';
+    sel.querySelectorAll('.pad-info, .fader-seg').forEach(d => d.remove());
+    const satColor = (i + 1 === dotIdx) ? onColor : offColor;
+    sel.style.background  = satColor;
+    sel.style.borderColor = satColor;
+  });
+}
+
+function renderLfoProps(body, xy, cfg) {
+  const dirOpts = [['up','Up ↑'],['down','Down ↓'],['right','Right →'],['left','Left ←']];
+  const dirEl = select(dirOpts, cfg.direction || 'up', v => {
+    const tentative = { ...state.get(xy), direction: v };
+    if (!canPlaceFader(xy, tentative, xy)) { dirEl.value = state.get(xy).direction || 'up'; return; }
+    state.get(xy).direction = v;
+    refreshPad(xy);
+  });
+  body.appendChild(group('Direction', dirEl));
+
+  const lenOpts = [[2,'2'],[3,'3'],[4,'4'],[5,'5'],[6,'6'],[7,'7'],[8,'8'],[9,'9']];
+  const lenEl = select(lenOpts, cfg.length || 4, v => {
+    const tentative = { ...state.get(xy), length: parseInt(v) };
+    if (!canPlaceFader(xy, tentative, xy)) { lenEl.value = String(state.get(xy).length || 4); return; }
+    state.get(xy).length = parseInt(v);
+    refreshPad(xy);
+  });
+  body.appendChild(group('Length (pads)', lenEl));
+
+  body.appendChild(group('CC Number (output)', numberInput(0, 127, cfg.cc, v => { state.get(xy).cc = v; refreshPad(xy); })));
+  body.appendChild(channelSelect(cfg.channel, xy, 'channel'));
+
+  body.appendChild(group('Min Value', numberInput(0, 127, cfg.min_val ?? 0, v => { state.get(xy).min_val = v; refreshPad(xy); })));
+  body.appendChild(group('Max Value', numberInput(0, 127, cfg.max_val ?? 127, v => { state.get(xy).max_val = v; refreshPad(xy); })));
+  body.appendChild(group('Start Value (initial position)', numberInput(0, 127, cfg.start_val ?? 63, v => { state.get(xy).start_val = v; refreshPad(xy); })));
+
+  const sep = document.createElement('div');
+  sep.style.cssText = 'margin:8px 0 4px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em';
+  sep.textContent = 'Rate Control (reads a CC from cc_state)';
+  body.appendChild(sep);
+
+  body.appendChild(group('Rate CC# (assign a fader to this)', numberInput(0, 127, cfg.rate_cc ?? 20, v => { state.get(xy).rate_cc = v; })));
+
+  // Rate channel selector (reuses the opts pattern without the refreshPad call)
+  const rateChanOpts = [['0', 'Global']];
+  for (let i = 1; i <= 16; i++) rateChanOpts.push([i, `Channel ${i}`]);
+  body.appendChild(group('Rate Channel', select(rateChanOpts, cfg.rate_channel ?? 1, v => { state.get(xy).rate_channel = parseInt(v); })));
+
+  body.appendChild(group('Fastest speed — CC=127 (ms for full sweep)', numberInput(1, 30000, cfg.rate_min_ms ?? 100, v => { state.get(xy).rate_min_ms = Math.max(1, v); })));
+  body.appendChild(group('Slowest speed — CC=1 (ms for full sweep)', numberInput(1, 60000, cfg.rate_max_ms ?? 5000, v => { state.get(xy).rate_max_ms = Math.max(state.get(xy).rate_min_ms ?? 1, v); })));
 }
 
 // ── Mode registry ────────────────────────────────────────────────────────────

@@ -12,13 +12,18 @@
     },
     {
       "slot": 2,
-      "name": "Mix Test",
-      "id": "mix_test"
+      "name": "Double Fade",
+      "id": "d_fade"
     },
     {
       "slot": 3,
       "name": "Mega Faders",
       "id": "mega_faders"
+    },
+    {
+      "slot": 4,
+      "name": "LFO Test",
+      "id": "lfo_test"
     }
   ]
 }

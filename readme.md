@@ -50,7 +50,10 @@ A browser-based pad editor (`editor/index.html`) for designing MIDI controller l
 | `note` | Sends Note On/Off. Momentary, toggle, or trigger behavior. |
 | `cc` | Sends a CC value on press/release. Momentary, toggle, or trigger. |
 | `pc` | Sends a Program Change on press. |
-| `fader` | Multi-pad fader with stepped CC output, optional curve-based slew rate. |
+| `fader` | Multi-pad fader with stepped CC output. Touch sets value instantly. |
+| `smooth_fader` | Like `fader` but touch sets a target; the global fade queue steps toward it smoothly at the rate controlled by the assigned `curve_btn`. Fades continue across mode page switches. |
+| `curve_btn` | Standalone pad that cycles rate presets for a `smooth_group`. Each preset has a configurable sweep duration (ms) and LED color. 1–4 rates per button; default white→green→yellow→red (127ms→508ms→2032ms→8001ms). |
+| `lfo` | Multi-pad oscillator. A single dot bounces back and forth across the pads (triangle wave). Rate is controlled by a configurable CC read live from `cc_state` — point a `smooth_fader` (or any external CC source) at the same channel+CC to control speed in real time. CC=0 = stopped. Configurable `rate_min_ms`/`rate_max_ms` (total sweep time at fastest/slowest rate), `min_val`/`max_val`, `start_val`, `color_on`/`color_off`. Steps through pad positions (not raw CC values) so every pad gets equal dwell time. |
 | `mode_switch` | Switches to another firmware mode slot. |
 
 Each widget supports a `label` (up to 6 characters, shown on the pad) and a longer `description` shown only in the editor's properties panel.
@@ -61,11 +64,18 @@ Each widget supports a `label` (up to 6 characters, shown on the pad) and a long
 - `trigger` — fires the on-value once per press and never sends an off-value (no MIDI message at all on release). The LED still dims to the off color on release, purely visual, so it reads like a momentary pad without producing a spurious release message downstream.
 
 **Fader features:**
-- Variable length (2–9 pads), vertical or horizontal, configurable `min_value`/`max_value` — ranges don't have to be 0–127, so multiple faders can cover adjacent sub-ranges of the same CC for a single long fader feel (e.g. col 1 = 0–95 green, col 2 = 96–120 yellow, 121–127 red).
-- **Reactive init** — faders start dark on boot (all pads draw `color_off`, no position dot). The first touch or incoming CC fires the display. This makes split-range multi-segment layouts visually correct from the start.
+- Variable length (2–9 pads), vertical or horizontal, configurable `min_value`/`max_value` — ranges don't have to be 0–127, so multiple faders can cover adjacent sub-ranges of the same CC for a single long fader feel (e.g. col 1 = 0–95 green, col 2 = 96–120 yellow, col 3 = 121–127 red).
+- **CC=0 default on first boot** — on the very first mode entry after a power cycle, any fader CC that has never been set (reads 0xFF from `cc_state`) is seeded to 0. All faders start at their minimum position rather than showing blank.
 - **Internal CC broadcast** (`handle_fader_cc`) — when any fader pad is pressed, the generated code broadcasts the resulting CC value to every other fader in the layout sharing the same channel+CC. Faders whose range is below the value go dark; faders whose range is above go fully lit; faders whose range contains the value show the nearest throw position. A three-segment green/yellow/red layout self-coordinates on every touch with no external MIDI routing needed.
-- **Incoming MIDI CC** — `midi_event` now routes incoming `0xBx` CC messages through the same broadcast path, so a DAW or external device sending CC feedback on the same channel+CC updates all matching fader segments live.
-- `curve_mode` (anchor pad as a slew-rate selector — instant/slow/medium/fast, shown via anchor LED color) is parsed from the JSON but **not implemented in the generator yet** — `tools/json_to_mode.py` always emits instant-snap behavior regardless of this flag. Setting it in the editor currently has no effect on device.
+- **Incoming MIDI CC** — `midi_event` routes incoming `0xBx` CC messages through the same broadcast path, so a DAW or external device sending CC feedback on the same channel+CC updates all matching fader segments live.
+- **Global CC state table** — a 16×128 byte table (`cc_state`) persists the last-known value for every channel+CC across mode switches. On re-entering a mode, every fader reads from this table and draws at the correct position — so moving a fader on mode page 1 and switching to page 2 and back shows the right level without any external state management.
+- **cc_state fallback in timer_event** — when no fade is active for a fader's channel+CC, `timer_event` reads `cc_state` directly as a fallback. This means anything writing to `cc_state` — an LFO, a smooth fade completing, an incoming MIDI CC — automatically updates the fader display without special wiring. An LFO widget outputting on the same CC as a fader will drive that fader's position display in real time.
+
+**Smooth fader + curve button:**
+- `smooth_fader` keeps the full pad throw range. Touch sets a target; a background automation queue (see below) steps the CC value toward it one step per tick at the configured rate.
+- `curve_btn` controls the step rate for all `smooth_fader`s in its `smooth_group`. Tap to cycle through 1–4 configurable rates (ms per full sweep + LED color). Rate is locked per-fade at initiation — changing the button mid-fade only affects the next touch.
+- The fade queue (`src/utils/fader.c`, `fader_tick()`) is ticked from `CFW_AppTick` every 1ms, independently of which mode is active. Fades survive mode page switches: MIDI CC is sent at every step, `cc_state` stays current, and the display picks up correctly on re-entry.
+- External incoming CC cancels any active fade for that channel+CC and jumps the fader immediately.
 
 Save a layout as `.json` (File > Export, or copy straight from the browser) into `editor/`.
 
@@ -97,10 +107,10 @@ Once the registry is synced, the editor's `mode_switch` widget dropdown and on-p
 
 | Slot | Mode | Origin | Notes |
 |---|---|---|---|
-| 0 | Mix 1 | generated (`editor/mixer1.json`) | 8-channel CC mixer: one fader per channel plus 4 toggle pads |
-| 1 | Mix 2 | generated (`editor/mixer2.json`) | second bank of the same layout, on its own slot/`mode_switch` target |
-| 2 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout, momentary/toggle pads, `mode_switch` cluster |
-| 3 | Mix Test | generated (`editor/mix_test.json`) | scratch layout exercising every generator widget/behavior combo (toggle, trigger, fader, pc, mode_switch) |
+| 0 | Mix 1 | generated (`editor/mixer1.json`) | 8-channel smooth fader mixer: 4 blue channels (group 0) + 4 red channels (group 1), each group with its own `curve_btn`; 8 mute toggles |
+| 1 | Mix 2 | generated (`editor/mixer2.json`) | second fader bank on its own slot |
+| 2 | Double Fade | generated (`editor/d_fade.json`) | two-group smooth fader layout |
+| 3 | Mega Faders | generated (`editor/mega_faders.json`) | larger multi-fader layout with `mode_switch` cluster |
 | — | Boot | hand-written, system-only | one-shot startup animation, not user-navigable |
 | — | Setup | hand-written, system-only | long-press **Stop-Solo-Mute (pad 19)** to enter; single page, sets LED brightness only |
 

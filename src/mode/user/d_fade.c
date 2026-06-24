@@ -4,6 +4,7 @@
 #include <led/led.h>
 #include <driver/driver.h>
 #include <utils/cc_state.h>
+#include <utils/fader.h>
 
 static void send_midi3(uint8_t status, uint8_t d1, uint8_t d2) {
     uint8_t buf[3] = { status, d1, d2 };
@@ -22,6 +23,7 @@ typedef struct {
     uint8_t  max_value;
     uint32_t color_on;
     uint32_t color_off;
+    uint8_t  smooth_group;  /* 0xFF = no group, ticks=1 fallback */
 } FaderCfg;
 
 #define N_FADERS 12
@@ -36,6 +38,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 95,
         .color_on   = 0x00FF00,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 12,
@@ -47,6 +50,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 120,
         .color_on   = 0xFFFF00,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 13,
@@ -58,6 +62,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 95,
         .color_on   = 0x00FF00,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 14,
@@ -69,6 +74,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 120,
         .color_on   = 0xFFFF00,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 15,
@@ -80,6 +86,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 95,
         .color_on   = 0x00FF00,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 16,
@@ -91,6 +98,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 120,
         .color_on   = 0xFFFF00,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 17,
@@ -102,6 +110,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 95,
         .color_on   = 0x00FF00,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 18,
@@ -113,6 +122,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 120,
         .color_on   = 0xFFFF00,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 62,
@@ -124,6 +134,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 127,
         .color_on   = 0xFF0000,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 64,
@@ -135,6 +146,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 127,
         .color_on   = 0xFF0000,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 66,
@@ -146,6 +158,7 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 127,
         .color_on   = 0xFF0000,
         .color_off  = 0x000048,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
     {
         .anchor_xy  = 68,
@@ -157,47 +170,53 @@ static const FaderCfg FADERS[N_FADERS] = {
         .max_value  = 127,
         .color_on   = 0xFF0000,
         .color_off  = 0x00C2C2,
+        .smooth_group = 255,  /* no group, ticks=1 */
     },
 };
 
-__attribute__((section(".cfw_bss"))) static uint8_t fader_current[N_FADERS];
+__attribute__((section(".cfw_bss"))) static uint8_t fader_display_current[N_FADERS];
 __attribute__((section(".cfw_bss"))) static uint8_t fader_fill[N_FADERS];
 __attribute__((section(".cfw_bss"))) static uint32_t fader_activated;
 
-static void update_fader_leds(uint8_t fi, uint8_t fill) {
+static void update_fader_leds(uint8_t fi, uint8_t fill, uint32_t color_on) {
     const FaderCfg *f = &FADERS[fi];
     for (uint8_t i = 0; i < f->length; i++) {
         uint8_t pad = (uint8_t)((int)f->anchor_xy + i * f->pad_step);
-        set_led(pad, (i <= fill) ? f->color_on : f->color_off);
+        set_led(pad, (i <= fill) ? color_on : f->color_off);
+    }
+}
+
+static void update_fader_display(uint8_t fi, uint8_t value) {
+    const FaderCfg *f = &FADERS[fi];
+    fader_display_current[fi] = value;
+    fader_activated |= (1u << fi);
+    uint32_t col_on = f->color_on;
+    if (value < f->min_value) {
+        fader_fill[fi] = 0;
+        for (uint8_t i = 0; i < f->length; i++)
+            set_led((uint8_t)((int)f->anchor_xy + i * f->pad_step), f->color_off);
+    } else if (value >= f->max_value) {
+        fader_fill[fi] = (uint8_t)(f->length - 1u);
+        update_fader_leds(fi, (uint8_t)(f->length - 1u), col_on);
+    } else {
+        uint8_t best = 0, best_diff = 255;
+        for (uint8_t t = 0; t < f->length; t++) {
+            uint8_t cv = (t == 0) ? f->min_value :
+                         (t >= f->length - 1u) ? f->max_value :
+                         (uint8_t)(f->min_value + t * (f->max_value - f->min_value) / (f->length - 1u));
+            uint8_t diff = (value >= cv) ? (value - cv) : (cv - value);
+            if (diff < best_diff) { best_diff = diff; best = t; }
+        }
+        fader_fill[fi] = best;
+        update_fader_leds(fi, best, col_on);
     }
 }
 
 static void handle_fader_cc(uint8_t channel, uint8_t cc, uint8_t value) {
     for (uint8_t fi = 0; fi < N_FADERS; fi++) {
-        const FaderCfg *f = &FADERS[fi];
-        if (f->channel != channel || f->cc != cc) continue;
-        fader_current[fi] = value;
-        fader_activated |= (1u << fi);
+        if (FADERS[fi].channel != channel || FADERS[fi].cc != cc) continue;
         cc_state_set(channel, cc, value);
-        if (value < f->min_value) {
-            fader_fill[fi] = 0;
-            for (uint8_t i = 0; i < f->length; i++)
-                set_led((uint8_t)((int)f->anchor_xy + i * f->pad_step), f->color_off);
-        } else if (value >= f->max_value) {
-            fader_fill[fi] = (uint8_t)(f->length - 1u);
-            update_fader_leds(fi, (uint8_t)(f->length - 1u));
-        } else {
-            uint8_t best = 0, best_diff = 255;
-            for (uint8_t t = 0; t < f->length; t++) {
-                uint8_t cv = (t == 0) ? f->min_value :
-                             (t >= f->length - 1u) ? f->max_value :
-                             (uint8_t)(f->min_value + t * (f->max_value - f->min_value) / (f->length - 1u));
-                uint8_t diff = (value >= cv) ? (value - cv) : (cv - value);
-                if (diff < best_diff) { best_diff = diff; best = t; }
-            }
-            fader_fill[fi] = best;
-            update_fader_leds(fi, best);
-        }
+        update_fader_display(fi, value);
     }
 }
 
@@ -206,12 +225,15 @@ void d_fade_init() {
     if (!mode_initialized) {
         for (int i = 0; i < 100; i++) toggle[i] = 0;
         for (uint8_t i = 0; i < N_FADERS; i++) {
-            fader_current[i] = FADERS[i].min_value;
+            fader_display_current[i] = FADERS[i].min_value;
             fader_fill[i] = 0;
+            if (cc_state_get(FADERS[i].channel, FADERS[i].cc) == 0xFF)
+                cc_state_set(FADERS[i].channel, FADERS[i].cc, 0);
         }
         fader_activated = 0;
         mode_initialized = 1;
     }
+    set_led(49, 0xFFB7FF);
     set_led(59, 0xFBD7B3);
     set_led(69, 0x00FF00);
     set_led(79, 0xB7B7FF);
@@ -229,7 +251,7 @@ void d_fade_init() {
         if (gv != 0xFF) {
             handle_fader_cc(FADERS[i].channel, FADERS[i].cc, gv);
         } else if (fader_activated & (1u << i)) {
-            update_fader_leds(i, fader_fill[i]);
+            update_fader_leds(i, fader_fill[i], FADERS[i].color_on);
         } else {
             const FaderCfg *f = &FADERS[i];
             for (uint8_t j = 0; j < f->length; j++)
@@ -238,10 +260,21 @@ void d_fade_init() {
     }
 }
 
-void d_fade_timer_event() { }
+void d_fade_timer_event() {
+    for (uint8_t fi = 0; fi < N_FADERS; fi++) {
+        uint8_t cur = fader_current(FADERS[fi].channel, FADERS[fi].cc);
+        if (cur == 0xFF)
+            cur = cc_state_get(FADERS[fi].channel, FADERS[fi].cc);
+        if (cur == 0xFF || cur == fader_display_current[fi]) continue;
+        update_fader_display(fi, cur);
+    }
+}
 
 void d_fade_surface_event(uint8_t type, uint8_t index, uint8_t value) {
     switch (index) {
+        case 49:
+            if (type) mode_switch(MODE_LFO_TEST);
+            break;
         case 59:
             if (type) mode_switch(MODE_MEGA_FADERS);
             break;
@@ -355,9 +388,11 @@ void d_fade_surface_event(uint8_t type, uint8_t index, uint8_t value) {
                     uint8_t val = (throw_pos == 0) ? f->min_value :
                                   (throw_pos >= f->length - 1u) ? f->max_value :
                                   (uint8_t)(f->min_value + throw_pos * (f->max_value - f->min_value) / (f->length - 1u));
-                    handle_fader_cc(f->channel, f->cc, val);
-                    send_midi3((uint8_t)(0xB0 | f->channel), f->cc, val);
-                    return;
+                    {
+                        uint16_t ticks = 1;
+                        fader_fade(f->channel, f->cc, val, ticks);
+                        return;
+                    }
                 }
             }
             break;
@@ -367,8 +402,11 @@ void d_fade_surface_event(uint8_t type, uint8_t index, uint8_t value) {
 
 void d_fade_midi_event(uint8_t port, uint8_t status, uint8_t d1, uint8_t d2) {
     (void)port;
-    if ((status & 0xF0) == 0xB0)
-        handle_fader_cc((uint8_t)(status & 0x0F), d1, d2);
+    if ((status & 0xF0) == 0xB0) {
+        uint8_t ch = (uint8_t)(status & 0x0F);
+        fader_cancel(ch, d1);
+        handle_fader_cc(ch, d1, d2);
+    }
 }
 
 void d_fade_aftertouch_event(uint8_t index, uint8_t value) {
